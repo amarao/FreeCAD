@@ -1,33 +1,57 @@
-import FreeCAD, math, sys, os, DraftVecUtils, WorkingPlane
-import Part, DraftGeomUtils
+import FreeCAD
+import math
+import sys
+import DraftVecUtils
+import WorkingPlane
+import Part
+import DraftGeomUtils
 from FreeCAD import Vector
 from Draft import getType, getrgb, svgpatterns
 
 
+def getDraftParam(param_name, default_value):
+    params = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Draft")
+    if param_name in ("svgDashedLine", "svgDottedLine", "svgDashdotLine"):
+        return params.GetString(param_name, default_value)
+    elif param_name == 'svgDiscretization':
+        return params.GetFloat('svgDiscretization', default_value)
+    else:
+        raise ValueError("Unknown parameter name %s" % param_name)
+
+
+def process_custom_linestyle(linestyle, scale):
+    if linestyle:
+        if "," in linestyle:
+            try:
+                dashes_list = map(float, linestyle.split(','))
+                if filter(math.isnan, dashes_list) or \
+                   filter(math.isinf, dashes_list):
+                    print("error: Not a number in style: %s", linestyle)
+                    return "none"
+                scaled_dashes_list = [str(dash/scale) for dash in dashes_list]
+                return ",".join(scaled_dashes_list)
+            except (ValueError, TypeError, ArithmeticError) as e:
+                print("error: line style %s cause error: %s" % (
+                    linestyle,
+                    str(e)
+                ))
+    return "none"
+
+
 def getLineStyle(linestyle, scale):
     "returns a linestyle"
-    p = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Draft")
-    l = None
     if linestyle == "Dashed":
-        l = p.GetString("svgDashedLine","0.09,0.05")
+        processed_linestyle = getDraftParam("svgDashedLine", "0.09,0.05")
     elif linestyle == "Dashdot":
-        l = p.GetString("svgDashdotLine","0.09,0.05,0.02,0.05")
+        processed_linestyle = getDraftParam(
+            "svgDashdotLine",
+            "0.09,0.05,0.02,0.05"
+        )
     elif linestyle == "Dotted":
-        l = p.GetString("svgDottedLine","0.02,0.02")
-    elif linestyle:
-        if "," in linestyle:
-            l = linestyle
-    if l:
-        l = l.split(",")
-        try:
-            # scale dashes
-            l = ",".join([str(float(d)/scale) for d in l])
-            #print "lstyle ",l
-        except:
-            return "none"
-        else:
-            return l
-    return "none"
+        processed_linestyle = getDraftParam("svgDottedLine", "0.02,0.02")
+    else:
+        processed_linestyle = process_custom_linestyle(linestyle, scale)
+    return processed_linestyle
 
 
 def getProj(vec, plane):
