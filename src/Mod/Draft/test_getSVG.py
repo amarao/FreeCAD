@@ -116,7 +116,7 @@ def test_sad_getLineStyle_bad_linestyle(getSVG):
     assert getSVG.getLineStyle("foobar", 2.0) == "none"
 
 
-#  not test for getProj/getDiscretized yet
+#  no tests for getProj/getDiscretized yet
 
 def test_good_getPattern_present(getSVG):
     assert getSVG.getPattern('pattern_present') == 'some_value'
@@ -124,3 +124,6 @@ def test_good_getPattern_present(getSVG):
 
 def test_sad_getPattern_absent(getSVG):
     assert getSVG.getPattern('pattern_absent') == ''
+
+
+def 
