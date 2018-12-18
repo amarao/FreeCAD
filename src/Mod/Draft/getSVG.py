@@ -76,10 +76,7 @@ def getDiscretized(edge, plane):
         ml = 10
     d = int(edge.Length/ml)
     if d == 0:
-        if edge.Length < 0:
-            d = -1
-        else:
-            d = 1
+        d = 1
     edata = ""
     for i in range(d + 1):
         v = getProj(edge.valueAt(edge.FirstParameter+((float(i)/d)*(edge.LastParameter-edge.FirstParameter))), plane)
