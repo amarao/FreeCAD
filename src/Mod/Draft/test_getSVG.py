@@ -15,7 +15,16 @@ def mock_FreeCAD():
 
 
 @pytest.fixture(scope="module")
-def getSVG(mock_FreeCAD):
+def mock_Draft():
+    Draft = mock.MagicMock()
+    Draft.svgpatterns.return_value = {
+        'pattern_present': ['some_value']
+    }
+    return Draft
+
+
+@pytest.fixture(scope="module")
+def getSVG(mock_FreeCAD, mock_Draft):
     import sys
     with mock.patch.dict(sys.modules, {
             "FreeCAD": mock_FreeCAD,
@@ -23,7 +32,7 @@ def getSVG(mock_FreeCAD):
             "WorkingPlane": mock.MagicMock(),
             "Part": mock.MagicMock(),
             "DraftGeomUtils": mock.MagicMock(),
-            "Draft": mock.MagicMock()
+            "Draft": mock_Draft
     }):
         import getSVG
         yield getSVG
@@ -105,3 +114,13 @@ def test_good_getLineStyle(getSVG, input, scale, output):
 
 def test_sad_getLineStyle_bad_linestyle(getSVG):
     assert getSVG.getLineStyle("foobar", 2.0) == "none"
+
+
+#  not test for getProj/getDiscretized yet
+
+def test_good_getPattern_present(getSVG):
+    assert getSVG.getPattern('pattern_present') == 'some_value'
+
+
+def test_sad_getPattern_absent(getSVG):
+    assert getSVG.getPattern('pattern_absent') == ''
