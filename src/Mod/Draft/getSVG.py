@@ -142,7 +142,6 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
 
 
     def getPath(edges=[],wires=[],pathname=None):
-        import Part,DraftGeomUtils
         svg = "<path "
         if pathname is None:
             svg += 'id="%s" ' % obj.Name
@@ -176,7 +175,6 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
                 iscircle = DraftGeomUtils.geomType(e) == "Circle"
                 isellipse = DraftGeomUtils.geomType(e) == "Ellipse"
                 if iscircle or isellipse:
-                    import math
                     if hasattr(FreeCAD,"DraftWorkingPlane"):
                         drawing_plane_normal = FreeCAD.DraftWorkingPlane.axis
                     else:
@@ -188,7 +186,6 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
                         done = False
                         if (int(occversion[0]) >= 7) and (int(occversion[1]) >= 1):
                             # if using occ >= 7.1, use HLR algorithm
-                            import Drawing
                             snip = Drawing.projectToSVG(e,drawing_plane_normal)
                             if snip:
                                 try:
