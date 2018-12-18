@@ -55,27 +55,33 @@ def getLineStyle(linestyle, scale):
 
 
 def getProj(vec, plane):
-    if not plane: return vec
-    nx = DraftVecUtils.project(vec,plane.u)
+    if not plane:
+        return vec
+    nx = DraftVecUtils.project(vec, plane.u)
     lx = nx.Length
-    if abs(nx.getAngle(plane.u)) > 0.1: lx = -lx
-    ny = DraftVecUtils.project(vec,plane.v)
+    if abs(nx.getAngle(plane.u)) > 0.1:
+        lx = -lx
+    ny = DraftVecUtils.project(vec, plane.v)
     ly = ny.Length
-    if abs(ny.getAngle(plane.v)) > 0.1: ly = -ly
-    #if techdraw: buggy - we now simply do it at the end
-    #    ly = -ly
-    return Vector(lx,ly,0)
+    if abs(ny.getAngle(plane.v)) > 0.1:
+        ly = -ly
+    # if techdraw:  # buggy - we now simply do it at the end
+    #     ly = -ly
+    return Vector(lx, ly, 0)
 
 
 def getDiscretized(edge, plane):
-    ml = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Draft").GetFloat("svgDiscretization",10.0)
+    ml = getDraftParam("svgDiscretization", 10.0)
     if ml == 0:
         ml = 10
     d = int(edge.Length/ml)
     if d == 0:
-        d = 1
+        if edge.Length < 0:
+            d = -1
+        else:
+            d = 1
     edata = ""
-    for i in range(d+1):
+    for i in range(d + 1):
         v = getProj(edge.valueAt(edge.FirstParameter+((float(i)/d)*(edge.LastParameter-edge.FirstParameter))), plane)
         if not edata:
             edata += 'M ' + str(v.x) +' '+ str(v.y) + ' '
