@@ -74,17 +74,19 @@ def getDiscretized(edge, plane):
     ml = getDraftParam("svgDiscretization", 10.0)
     if ml == 0:
         ml = 10
-    d = int(edge.Length/ml)
-    if d == 0:
-        d = 1
+    steps_along_edge = max(1, abs(int(edge.Length/ml)))
     edata = ""
-    for i in range(d + 1):
-        v = getProj(edge.valueAt(edge.FirstParameter+((float(i)/d)*(edge.LastParameter-edge.FirstParameter))), plane)
+    edge_distance = edge.LastParameter - edge.FirstParameter
+    for step in range(steps_along_edge + 1):
+        point_on_edge = edge.FirstParameter + (
+            (float(step) / steps_along_edge) * edge_distance
+        )
+        v = getProj(edge.valueAt(point_on_edge), plane)
         if not edata:
-            edata += 'M ' + str(v.x) +' '+ str(v.y) + ' '
+            edata += 'M ' + str(v.x) + ' ' + str(v.y) + ' '
         else:
-            edata += 'L ' + str(v.x) +' '+ str(v.y) + ' '
-    return edata
+            edata += 'L ' + str(v.x) + ' ' + str(v.y) + ' '
+    return edata  # REFACTOR: convert to tuple and use with svg decorator
 
 
 def getPattern(pat):
