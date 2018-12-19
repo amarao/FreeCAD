@@ -26,7 +26,7 @@ def process_custom_linestyle(linestyle, scale):
                 dashes_list = map(float, linestyle.split(','))
                 if filter(math.isnan, dashes_list) or \
                    filter(math.isinf, dashes_list):
-                    print("error: Not a number in style: %s", linestyle)
+                    print("error: Not a number in line style: %s" % linestyle)
                     return "none"
                 scaled_dashes_list = [str(dash/scale) for dash in dashes_list]
                 return ",".join(scaled_dashes_list)

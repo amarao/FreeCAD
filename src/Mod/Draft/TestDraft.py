@@ -24,6 +24,76 @@
 #***************************************************************************/
 
 import FreeCAD, os, unittest, FreeCADGui, Draft
+from Draft import svg
+
+
+class GetSVGTest_getDraftParam(unittest.TestCase):
+
+    def test_good_svgDashedLine(self):
+        self.assertEqual(svg.getDraftParam('svgDashedLine', '1'), '1')
+
+    def test_good_svgDottedLine(self):
+        self.assertEqual(svg.getDraftParam('svgDottedLine', '1'), '1')
+
+    def test_good_svgDashdotLine(self):
+        self.assertEqual(svg.getDraftParam('svgDashdotLine', '1'), '1')
+
+    def test_good_svgDiscretization(self):
+        self.assertEqual(svg.getDraftParam('svgDiscretization', 1.0), 1.0)
+
+    def test_sad_exception(self):
+        with self.assertRaises(ValueError):
+            svg.getDraftParam('foobar', "foobar")
+
+
+class GetSVGTest_process_custom_linestyle(unittest.TestCase):
+
+    def test_good_no_scale(self):
+        self.assertEqual(
+            svg.process_custom_linestyle("1,1,1", 1),
+            "1.0,1.0,1.0"
+        )
+
+    def test_good_int_division(self):
+        self.assertEqual(
+            svg.process_custom_linestyle("5,2,0.1", 2),
+            "2.5,1.0,0.05"
+        )
+
+    def test_good_float_division(self):
+        self.assertEqual(
+            svg.process_custom_linestyle("4.0,2.0,1.0", 2.0),
+            "2.0,1.0,0.5"
+        )
+
+    def test_good_negative_and_zero(self):
+        self.assertEqual(
+            svg.process_custom_linestyle("-1,0,-0.5", 5),
+            "-0.2,0.0,-0.1"
+        )
+
+    def test_sad_empty(self):
+        self.assertEqual(svg.process_custom_linestyle("", 5), "none")
+
+    def test_sad_no_coma(self):
+        self.assertEqual(svg.process_custom_linestyle("5", 5), "none")
+
+    def test_sad_NaN(self):
+        self.assertEqual(svg.process_custom_linestyle("Nan,NaN", 5), "none")
+
+    def test_sad_Inf(self):
+        self.assertEqual(svg.process_custom_linestyle("Inf,Inf", 5), "none")
+
+    def test_sad_stings(self):
+        self.assertEqual(svg.process_custom_linestyle("One,Two", 5), "none")
+
+    def test_sad_scale_type(self):
+        self.assertEqual(svg.process_custom_linestyle("1,2", "wrong"), "none")
+
+    def test_bad_input_type(self):
+        with self.assertRaises(Exception):
+            svg.process_custom_linestyle(dict, 2)
+
 
 class DraftTest(unittest.TestCase):
 
@@ -59,7 +129,7 @@ class DraftTest(unittest.TestCase):
         FreeCAD.Console.PrintLog ('Checking Draft BSpline...\n')
         Draft.makeBSpline([FreeCAD.Vector(0,0,0),FreeCAD.Vector(2,0,0),FreeCAD.Vector(2,2,0)])
         self.failUnless(FreeCAD.ActiveDocument.getObject("BSpline"),"Draft BSpline failed")
-        
+
     def testRectangle(self):
         FreeCAD.Console.PrintLog ('Checking Draft Rectangle...\n')
         Draft.makeRectangle(4,2)
@@ -143,6 +213,3 @@ class DraftTest(unittest.TestCase):
     def tearDown(self):
         FreeCAD.closeDocument("DraftTest")
         pass
-
-
-
