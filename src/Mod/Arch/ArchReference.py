@@ -170,8 +170,16 @@ class ArchReference:
             if altfile == FreeCAD.ActiveDocument.FileName:
                 return None
             elif os.path.exists(altfile):
-                filename = altfile
+                return altfile
             else:
+                # search for subpaths in current folder
+                altfile = None
+                subdirs = splitall(os.path.dirname(filename))
+                for i in range(len(subdirs)):
+                    subpath = [currentdir]+subdirs[-i:]+[basename]
+                    altfile = os.path.join(*subpath)
+                    if os.path.exists(altfile):
+                        return altfile
                 return None
         return filename
 
@@ -525,3 +533,19 @@ class ArchReferenceCommand:
 
 if FreeCAD.GuiUp:
     FreeCADGui.addCommand('Arch_Reference', ArchReferenceCommand())
+
+
+def splitall(path):
+    allparts = []
+    while 1:
+        parts = os.path.split(path)
+        if parts[0] == path:  # sentinel for absolute paths
+            allparts.insert(0, parts[0])
+            break
+        elif parts[1] == path: # sentinel for relative paths
+            allparts.insert(0, parts[1])
+            break
+        else:
+            path = parts[0]
+            allparts.insert(0, parts[1])
+    return allparts
