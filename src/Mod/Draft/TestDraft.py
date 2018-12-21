@@ -119,6 +119,15 @@ class GetSVGTest_getLineStyle(unittest.TestCase):
         self.assertEqual(svg.getLineStyle("fobar", 2.0), "none")
 
 
+class GetSVGTest_getPattern(unittest.TestCase):
+
+    def test_good_pattern_present(self):
+        self.assertTrue('concrete' in svg.getPattern('concrete'))
+
+    def test_sad_pattern_not_present(self):
+        self.assertEqual(svg.getPattern('non_existing_foobar'), '')
+
+
 class DraftTest(unittest.TestCase):
 
     def setUp(self):
