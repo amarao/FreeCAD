@@ -128,6 +128,97 @@ class GetSVGTest_getPattern(unittest.TestCase):
         self.assertEqual(svg.getPattern('non_existing_foobar'), '')
 
 
+class GetSVGTest_getProj(unittest.TestCase):
+    def test_good_no_plane(self):
+        self.assertEqual(
+            svg.getProj(svg.Vector(0.0, 1.0, 2.0), None),
+            svg.Vector(0.0, 1.0, 2.0)
+        )
+
+    def test_good_collinear(self):
+        vect = svg.Vector(1, 0, 0)
+        plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 0, 0),
+            svg.Vector(0, 1, 0),
+            svg.Vector(0, 0, 1)
+        )
+        self.assertEqual(
+            svg.getProj(vect, plane),
+            vect
+        )
+
+    def test_good_negative_collinear(self):
+        vect = svg.Vector(-1, 0, 0)
+        plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 0, 0),
+            svg.Vector(0, 1, 0),
+            svg.Vector(0, 0, 1)
+        )
+        self.assertEqual(
+            svg.getProj(vect, plane),
+            vect
+        )
+
+    def test_good_planar(self):
+        vect = svg.Vector(2, 3, 0)
+        plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 0, 0),
+            svg.Vector(0, 1, 0),
+            svg.Vector(0, 0, 1)
+        )
+        self.assertEqual(
+            svg.getProj(vect, plane),
+            vect
+        )
+
+    def test_good_normal(self):
+        vect = svg.Vector(0, 0, -1)
+        plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 0, 0),
+            svg.Vector(0, 1, 0),
+            svg.Vector(0, 0, 1)
+        )
+        self.assertEqual(
+            svg.getProj(vect, plane),
+            svg.Vector(0, 0, 0)
+        )
+
+    def test_good_zero(self):
+        vect = svg.Vector(0, 0, 0)
+        plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 0, 0),
+            svg.Vector(0, 1, 0),
+            svg.Vector(0, 0, 1)
+        )
+        self.assertEqual(
+            svg.getProj(vect, plane),
+            svg.Vector(0, 0, 0)
+        )
+
+    def test_good_45_degree(self):
+        vect = svg.Vector(1, 1, 1)
+        plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 0, 0),
+            svg.Vector(0, 1, 0),
+            svg.Vector(0, 0, 1)
+        )
+        self.assertEqual(
+            svg.getProj(vect, plane),
+            svg.Vector(1, 1, 0)
+        )
+
+    def test_good_non_default_axis(self):
+        vect = svg.Vector(9, 8, 7)
+        plane = svg.WorkingPlane.plane(
+            svg.Vector(3.33, 1.11, 4),
+            svg.Vector(12, 42, -2),
+            svg.Vector(-1, -1, -1)
+        )
+        proj = svg.getProj(vect, plane)
+        self.assertAlmostEqual(proj.x, 12.56166246)
+        self.assertAlmostEqual(proj.y, 9.833871105)
+
+
 class DraftTest(unittest.TestCase):
 
     def setUp(self):
