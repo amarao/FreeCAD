@@ -95,6 +95,30 @@ class GetSVGTest_process_custom_linestyle(unittest.TestCase):
             svg.process_custom_linestyle(dict, 2)
 
 
+class GetSVGTest_getLineStyle(unittest.TestCase):
+
+    def test_good_dashed(self):
+        self.assertEqual(svg.getLineStyle("Dashed", 1), "0.09,0.05")
+
+    def test_good_dashdot(self):
+        self.assertEqual(svg.getLineStyle("Dashdot", 1), "0.09,0.05,0.02,0.05")
+
+    def test_good_dotted(self):
+        self.assertEqual(svg.getLineStyle("Dotted", 1), "0.02,0.02")
+
+    def test_good_known_ignore_scale(self):
+        self.assertEqual(svg.getLineStyle("Dotted", 2), "0.02,0.02")
+
+    def test_good_custom_no_scale(self):
+        self.assertEqual(svg.getLineStyle("1.0,2.0", 1.0), "1.0,2.0")
+
+    def test_good_custom_scale(self):
+        self.assertEqual(svg.getLineStyle("1.0,2.0", 2.0), "0.5,1.0")
+
+    def test_sad_bad_style(self):
+        self.assertEqual(svg.getLineStyle("fobar", 2.0), "none")
+
+
 class DraftTest(unittest.TestCase):
 
     def setUp(self):
