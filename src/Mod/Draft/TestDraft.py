@@ -128,6 +128,36 @@ class GetSVGTest_getPattern(unittest.TestCase):
         self.assertEqual(svg.getPattern('non_existing_foobar'), '')
 
 
+class getSVGTest_projected_length(unittest.TestCase):
+
+    def test_good_no_flipping(self):
+        self.assertEqual(
+            svg.projected_length(
+                svg.Vector(1, 0, 0),
+                svg.Vector(1, 0, 0)
+            ),
+            1.0
+        )
+
+    def test_good_flipping(self):
+        self.assertEqual(
+            svg.projected_length(
+                svg.Vector(-1, 0, 0),
+                svg.Vector(1, 0, 0)
+            ),
+            -1.0
+        )
+
+    def test_good_zero_projection(self):
+        self.assertEqual(
+            svg.projected_length(
+                svg.Vector(0, 0, 1),
+                svg.Vector(1, 0, 0)
+            ),
+            0.0
+        )
+
+
 class GetSVGTest_getProj(unittest.TestCase):
     def test_good_no_plane(self):
         self.assertEqual(
@@ -218,6 +248,38 @@ class GetSVGTest_getProj(unittest.TestCase):
         self.assertAlmostEqual(proj.x, 12.56166246)
         self.assertAlmostEqual(proj.y, 9.833871105)
 
+
+class GetSVGTest_getDiscretized(unittest.TestCase):
+
+    doc_name = "GetSVGTest_getDiscretized"
+
+    def setUp(self):
+        # setting a new document to hold the tests
+        if FreeCAD.ActiveDocument:
+            if FreeCAD.ActiveDocument.Name != self.doc_name:
+                FreeCAD.newDocument(self.doc_name)
+        else:
+            FreeCAD.newDocument(self.doc_name)
+        FreeCAD.setActiveDocument(self.doc_name)
+        self.plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 0, 0),
+            svg.Vector(0, 1, 0),
+            svg.Vector(0, 0, 1)
+        )
+
+    def tearDown(self):
+        FreeCAD.closeDocument(self.doc_name)
+
+    def test_good_line(self):
+        wire = Draft.makeWire([
+            FreeCAD.Vector(0, 0, 0),
+            FreeCAD.Vector(2, 0, 0)
+        ])
+        new_objs, del_objs = Draft.downgrade(wire, delete=True)
+        print(new_objs, del_objs)
+        edge = FreeCAD.ActiveDocument.getObject("Edge")
+        # print(dir(edge))
+        # print(svg.getDiscretized(edge, self.plane))
 
 class DraftTest(unittest.TestCase):
 

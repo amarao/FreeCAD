@@ -54,34 +54,34 @@ def getLineStyle(linestyle, scale):
     return processed_linestyle
 
 
+def projected_length(vec, axis):
+    projected_vector = DraftVecUtils.project(vec, axis)
+    length = projected_vector.Length
+    if abs(projected_vector.getAngle(axis)) > math.pi/2:  # near 0 or near pi
+        length = -length
+    return length
+
+
 def getProj(vec, plane):
     if not plane:
         return vec
-    nx = DraftVecUtils.project(vec, plane.u)
-    lx = nx.Length
-    if abs(nx.getAngle(plane.u)) > 0.1:
-        lx = -lx
-    ny = DraftVecUtils.project(vec, plane.v)
-    ly = ny.Length
-    if abs(ny.getAngle(plane.v)) > 0.1:
-        ly = -ly
-    # if techdraw:  # buggy - we now simply do it at the end
-    #     ly = -ly
-    return Vector(lx, ly, 0)
+    coord_x = projected_length(vec, plane.u)
+    coord_y = projected_length(vec, plane.v)
+    return Vector(coord_x, coord_y, 0)
 
 
 def getDiscretized(edge, plane):
-    ml = getDraftParam("svgDiscretization", 10.0)
-    if ml == 0:
-        ml = 10
-    steps_along_edge = max(1, abs(int(edge.Length/ml)))
+    max_segment_length = getDraftParam("svgDiscretization", 10.0)
+    if max_segment_length == 0:
+        max_segment_length = 10
+    segments = max(1, abs(int(edge.Length/max_segment_length)))
     edata = ""
     edge_distance = edge.LastParameter - edge.FirstParameter
-    for step in range(steps_along_edge + 1):
-        point_on_edge = edge.FirstParameter + (
-            (float(step) / steps_along_edge) * edge_distance
+    for segment in range(segments + 1):
+        seg_vector = edge.FirstParameter + (
+            (float(segment) / segments) * edge_distance
         )
-        v = getProj(edge.valueAt(point_on_edge), plane)
+        v = getProj(edge.valueAt(seg_vector), plane)
         if not edata:
             edata += 'M ' + str(v.x) + ' ' + str(v.y) + ' '
         else:
@@ -95,7 +95,7 @@ def getPattern(pat):
     return ''
 
 
-def  getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wires=[], pathname=None):
+def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wires=[], pathname=None):
     # I REALLY NEED to fix pathdata here. Passing a list to be modified in func
     # is terrible
     svg = "<path "
