@@ -9,6 +9,39 @@ from FreeCAD import Vector
 from Draft import getType, getrgb, svgpatterns, gui
 
 
+class path:
+    def __init__(self, tag=True):
+        '''
+            if tag is True it's a full svg object,
+            if not, it's just a directions (d=...)
+        '''
+        assert(not tag)  # under construction
+        self.tag = tag
+
+    def __enter__(self):
+        self.route = []
+        return self
+        self.d = ""
+
+    def add_point(self, point):
+        self.route.append(point)
+
+    @staticmethod
+    def _process_point(mark, point):
+        return "{mark} {point.x} {point.y}".format(mark=mark, point=point)
+
+    def head(self):
+        if self.route:
+            return [self._process_point('M', self.route[0])]
+        return []
+
+    def tail(self):
+        return [self._process_point('L', p) for p in self.route[1:]]
+
+    def __exit__(self, type, value, traceback):
+        self.d = " ".join(self.head() + self.tail())
+
+
 def getDraftParam(param_name, default_value):
     params = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Draft")
     if param_name in ("svgDashedLine", "svgDottedLine", "svgDashdotLine"):
@@ -70,23 +103,25 @@ def getProj(vec, plane):
     return Vector(coord_x, coord_y, 0)
 
 
-def getDiscretized(edge, plane):
+def get_discretized(edge, plane):
     max_segment_length = getDraftParam("svgDiscretization", 10.0)
     if max_segment_length == 0:
         max_segment_length = 10
     segments = max(1, abs(int(edge.Length/max_segment_length)))
-    edata = ""
     edge_distance = edge.LastParameter - edge.FirstParameter
-    for segment in range(segments + 1):
-        seg_vector = edge.FirstParameter + (
-            (float(segment) / segments) * edge_distance
-        )
-        v = getProj(edge.valueAt(seg_vector), plane)
-        if not edata:
-            edata += 'M ' + str(v.x) + ' ' + str(v.y) + ' '
-        else:
-            edata += 'L ' + str(v.x) + ' ' + str(v.y) + ' '
-    return edata  # REFACTOR: convert to tuple and use with svg decorator
+    with path(tag=False) as edata:
+        for segment in range(segments + 1):
+            seg_vector = edge.FirstParameter + (
+                (float(segment) / segments) * edge_distance
+            )
+            v = getProj(edge.valueAt(seg_vector), plane)
+            edata.add_point(v)
+    return edata
+
+
+def getDiscretized(edge, plane):
+    # transition method to support strings
+    return get_discretized(edge, plane).d
 
 
 def getPattern(pat):

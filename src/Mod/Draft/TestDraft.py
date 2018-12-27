@@ -27,6 +27,31 @@ import FreeCAD, os, unittest, FreeCADGui, Draft
 from Draft import svg
 
 
+class GetSVGTest_path(unittest.TestCase):
+    def test_good_empty(self):
+        with svg.path(tag=False) as path:
+            pass
+        self.assertEqual(path.d, "")
+
+    def test_good_one(self):
+        with svg.path(tag=False) as path:
+            path.add_point(svg.Vector(0, 0, 0))
+        self.assertEqual(path.d, "M 0.0 0.0")
+
+    def test_good_line(self):
+        with svg.path(tag=False) as path:
+            path.add_point(svg.Vector(0, 0, 0))
+            path.add_point(svg.Vector(1, 1, 0))
+        self.assertEqual(path.d, "M 0.0 0.0 L 1.0 1.0")
+
+    def test_good_three(self):
+        with svg.path(tag=False) as path:
+            path.add_point(svg.Vector(0, 0, 0))
+            path.add_point(svg.Vector(10, 1, 0))
+            path.add_point(svg.Vector(0, -10, 0))
+        self.assertEqual(path.d, "M 0.0 0.0 L 10.0 1.0 L 0.0 -10.0")
+
+
 class GetSVGTest_getDraftParam(unittest.TestCase):
 
     def test_good_svgDashedLine(self):
@@ -275,11 +300,12 @@ class GetSVGTest_getDiscretized(unittest.TestCase):
             FreeCAD.Vector(0, 0, 0),
             FreeCAD.Vector(2, 0, 0)
         ])
-        new_objs, del_objs = Draft.downgrade(wire, delete=True)
-        print(new_objs, del_objs)
-        edge = FreeCAD.ActiveDocument.getObject("Edge")
-        # print(dir(edge))
-        # print(svg.getDiscretized(edge, self.plane))
+        edges = wire.Shape.Edges
+        self.assertEqual(
+            svg.getDiscretized(edges[0], self.plane),
+            "M -0.0 -0.0 L 2.0 -0.0"
+        )
+
 
 class DraftTest(unittest.TestCase):
 
