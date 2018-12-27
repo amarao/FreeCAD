@@ -47,7 +47,10 @@ def getDraftParam(param_name, default_value):
     if param_name in ("svgDashedLine", "svgDottedLine", "svgDashdotLine"):
         return params.GetString(param_name, default_value)
     elif param_name == 'svgDiscretization':
-        return params.GetFloat('svgDiscretization', default_value)
+        value = params.GetFloat('svgDiscretization', default_value)
+        if (value == 0):
+            return default_value
+        return value
     else:
         raise ValueError("Unknown parameter name %s" % param_name)
 
@@ -105,15 +108,12 @@ def getProj(vec, plane):
 
 def get_discretized(edge, plane):
     max_segment_length = getDraftParam("svgDiscretization", 10.0)
-    if max_segment_length == 0:
-        max_segment_length = 10
     segments = max(1, abs(int(edge.Length/max_segment_length)))
     edge_distance = edge.LastParameter - edge.FirstParameter
     with path(tag=False) as edata:
         for segment in range(segments + 1):
-            seg_vector = edge.FirstParameter + (
-                (float(segment) / segments) * edge_distance
-            )
+            seg_vector = edge.FirstParameter + \
+                ((float(segment) / segments) * edge_distance)
             v = getProj(edge.valueAt(seg_vector), plane)
             edata.add_point(v)
     return edata
