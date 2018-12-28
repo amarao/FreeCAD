@@ -307,6 +307,79 @@ class GetSVGTest_getDiscretized(unittest.TestCase):
         )
 
 
+class GetSVGTest_getPath(unittest.TestCase):
+
+    doc_name = "GetSVGTest_getPath"
+
+    def setUp(self):
+        # setting a new document to hold the tests
+        if FreeCAD.ActiveDocument:
+            if FreeCAD.ActiveDocument.Name != self.doc_name:
+                FreeCAD.newDocument(self.doc_name)
+        else:
+            FreeCAD.newDocument(self.doc_name)
+        FreeCAD.setActiveDocument(self.doc_name)
+        self.plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 0, 0),
+            svg.Vector(0, 1, 0),
+            svg.Vector(0, 0, 1)
+        )
+        self.placement = FreeCAD.Placement()
+        self.placement.Rotation.Q = (0.0, 0.0, 1.5, 1.0)
+        self.placement.Base = FreeCAD.Vector(-1.5, -1.0, 0.0)
+
+    def tearDown(self):
+        FreeCAD.closeDocument(self.doc_name)
+
+    def test_good_rectangle(self):
+        rec = Draft.makeRectangle(
+            length=4,
+            height=2,
+            placement=self.placement,
+            face=False,
+            support=None
+        )
+        self.assertEqual(
+            svg.getPath(
+                plane=self.plane,
+                fill="none",
+                stroke="#000000",
+                linewidth=0.21,
+                lstyle="none",
+                obj=rec,
+                pathdata=[],
+                edges=rec.Shape.Edges,
+                wires=[],
+                pathname=None
+            ),
+            '''<path id="Rectangle"  d="M -1.5 -1.0 L -3.03846153846 2.69230769231 L -4.88461538462 1.92307692308 L -3.34615384615 -1.76923076923 L -1.5 -1.0 " stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+        )
+
+
+    def test_good_circle(self):
+        placement = FreeCAD.Placement()
+        placement.Rotation.Q = (0.0, 0.0, 1.5, 1.0)
+        placement.Base = FreeCAD.Vector(-1.5, -1.0, 0.0)
+        circle = Draft.makeCircle(radius=3, placement=placement, face=None)
+        self.assertEqual(
+            svg.getPath(
+                plane=self.plane,
+                fill="none",
+                stroke="#000000",
+                linewidth=0.21,
+                lstyle="none",
+                obj=circle,
+                pathdata=[],
+                edges=circle.Shape.Edges,
+                wires=[],
+                pathname=None
+            ),
+            '''<path id="Rectangle"  d="M -1.5 -1.0 L -3.14044999159 2.93707997982 L -4.8187562594 2.23778570157 L -3.17830626781 -1.69929427825 L -1.5 -1.0 " stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+        )
+
+
+
+
 class DraftTest(unittest.TestCase):
 
     def setUp(self):
