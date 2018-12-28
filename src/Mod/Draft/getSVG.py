@@ -10,14 +10,6 @@ from Draft import getType, getrgb, svgpatterns, gui
 
 
 class path:
-    def __init__(self, tag=True):
-        '''
-            if tag is True it's a full svg object,
-            if not, it's just a directions (d=...)
-        '''
-        assert(not tag)  # under construction
-        self.tag = tag
-
     def __enter__(self):
         self.route = []
         return self
@@ -113,7 +105,7 @@ def get_discretized(edge, plane):
     max_segment_length = getDraftParam("svgDiscretization", 10.0)
     segments = max(1, abs(int(edge.Length/max_segment_length)))
     edge_distance = edge.LastParameter - edge.FirstParameter
-    with path(tag=False) as edata:
+    with path() as edata:
         for segment in range(segments + 1):
             seg_vector = edge.FirstParameter + \
                 ((float(segment) / segments) * edge_distance)
