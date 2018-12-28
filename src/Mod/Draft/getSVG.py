@@ -21,7 +21,6 @@ class path:
     def __enter__(self):
         self.route = []
         return self
-        self.d = ""
 
     def add_point(self, point):
         self.route.append(point)
@@ -39,7 +38,11 @@ class path:
         return [self._process_point('L', p) for p in self.route[1:]]
 
     def __exit__(self, type, value, traceback):
-        self.d = " ".join(self.head() + self.tail())
+        pass
+
+    @property
+    def d(self):
+        return " ".join(self.head() + self.tail())
 
 
 def getDraftParam(param_name, default_value):
@@ -96,6 +99,7 @@ def projected_length(vec, axis):
     if abs(projected_vector.getAngle(axis)) > math.pi/2:  # near 0 or near pi
         length = -length
     return length
+
 
 def getProj(vec, plane):
     if not plane:
