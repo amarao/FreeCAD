@@ -374,7 +374,7 @@ class GetSVGTest_getPath(unittest.TestCase):
                 wires=[],
                 pathname=None
             ),
-            '''<path id="Rectangle"  d="M -1.5 -1.0 L -3.14044999159 2.93707997982 L -4.8187562594 2.23778570157 L -3.17830626781 -1.69929427825 L -1.5 -1.0 " stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+            '''<circle cx="-1.5" cy="-1.0" r="3.0" stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none"/>\n'''
         )
 
 

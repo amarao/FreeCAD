@@ -97,7 +97,6 @@ def projected_length(vec, axis):
         length = -length
     return length
 
-
 def getProj(vec, plane):
     if not plane:
         return vec
@@ -128,6 +127,34 @@ def getPattern(pat):
     if pat in svgpatterns():
         return svgpatterns()[pat][0]
     return ''
+
+
+def getCircle(edge, plane, fill, stroke, linewidth, lstyle):
+    cen = getProj(edge.Curve.Center, plane)
+    rad = edge.Curve.Radius
+    if hasattr(FreeCAD,"DraftWorkingPlane"):
+        drawing_plane_normal = FreeCAD.DraftWorkingPlane.axis
+    else:
+        drawing_plane_normal = FreeCAD.Vector(0,0,1)
+    if plane: drawing_plane_normal = plane.axis
+    if round(edge.Curve.Axis.getAngle(drawing_plane_normal),2) == 0:
+        # perpendicular projection: circle
+        svg = '<circle cx="' + str(cen.x)
+        svg += '" cy="' + str(cen.y)
+        svg += '" r="' + str(rad)+'" '
+    else:
+        # any other projection: ellipse
+        svg = '<path d="'
+        svg += getDiscretized(edge, plane)
+        svg += '" '
+    svg += 'stroke="' + stroke + '" '
+    svg += 'stroke-width="' + str(linewidth) + ' px" '
+    svg += 'style="stroke-width:'+ str(linewidth)
+    svg += ';stroke-miterlimit:4'
+    svg += ';stroke-dasharray:' + lstyle
+    svg += ';fill:' + fill + '"'
+    svg += '/>\n'
+    return svg
 
 
 def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wires=[], pathname=None):
@@ -188,7 +215,7 @@ def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wir
                                 done = True
                     if not done:
                         if len(e.Vertexes) == 1 and iscircle: #complete curve
-                            svg = getCircle(e)
+                            svg = getCircle(e, plane, fill, stroke, linewidth, lstyle)
                             return svg
                         elif len(e.Vertexes) == 1 and isellipse:
                             #svg = getEllipse(e)
@@ -325,33 +352,6 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
             if hasattr(obj.ViewObject,"LineColor"):
                 stroke = getrgb(obj.ViewObject.LineColor)
 
-
-    def getCircle(edge):
-        cen = getProj(edge.Curve.Center, plane)
-        rad = edge.Curve.Radius
-        if hasattr(FreeCAD,"DraftWorkingPlane"):
-            drawing_plane_normal = FreeCAD.DraftWorkingPlane.axis
-        else:
-            drawing_plane_normal = FreeCAD.Vector(0,0,1)
-        if plane: drawing_plane_normal = plane.axis
-        if round(edge.Curve.Axis.getAngle(drawing_plane_normal),2) == 0:
-            # perpendicular projection: circle
-            svg = '<circle cx="' + str(cen.x)
-            svg += '" cy="' + str(cen.y)
-            svg += '" r="' + str(rad)+'" '
-        else:
-            # any other projection: ellipse
-            svg = '<path d="'
-            svg += getDiscretized(edge, plane)
-            svg += '" '
-        svg += 'stroke="' + stroke + '" '
-        svg += 'stroke-width="' + str(linewidth) + ' px" '
-        svg += 'style="stroke-width:'+ str(linewidth)
-        svg += ';stroke-miterlimit:4'
-        svg += ';stroke-dasharray:' + lstyle
-        svg += ';fill:' + fill + '"'
-        svg += '/>\n'
-        return svg
 
     def getEllipse(edge):
         cen = getProj(edge.Curve.Center, plane)
@@ -753,7 +753,7 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
                         dv = p2.sub(p1)
                         dv.normalize()
                         center = p2.add(dv.scale(rad,rad,rad))
-                        svg += getCircle(Part.makeCircle(rad,center))
+                        svg += getCircle(Part.makeCircle(rad,center), plane, fill, stroke, linewidth, lstyle)
                         if hasattr(vobj.Proxy,"bubbletexts"):
                             if len (vobj.Proxy.bubbletexts) >= n:
                                 svg += '<text fill="' + stroke + '" '
@@ -775,7 +775,7 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
         for f in obj.Shape.Faces:
             if len(f.Edges) == 1:
                 if isinstance(f.Edges[0].Curve,Part.Circle):
-                    svg += getCircle(f.Edges[0])
+                    svg += getCircle(f.Edges[0], plane, fill, stroke, linewidth, lstyle)
 
     elif getType(obj) == "Rebar":
         fill = "none"
@@ -861,7 +861,7 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
             # closed circle or spline
             if obj.Shape.Edges:
                 if isinstance(obj.Shape.Edges[0].Curve,Part.Circle):
-                    svg = getCircle(obj.Shape.Edges[0])
+                    svg = getCircle(obj.Shape.Edges[0], plane, fill, stroke, linewidth, lstyle)
                 else:
                     svg =   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, obj.Shape.Edges)
         if FreeCAD.GuiUp:
