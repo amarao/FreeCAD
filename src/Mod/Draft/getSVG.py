@@ -10,31 +10,79 @@ from Draft import getType, getrgb, svgpatterns, gui
 
 
 class path:
+    def __init__(self, name=None):
+        self.name = name
+        self.stroke = 'none'
+        self.stroke_width = '1 px'
+        self.stroke_miterlimit = '4'
+        self.stroke_dasharray = 'none'
+        self.fill = 'none'
+        self.fill_opacity = None
+        self.fill_rule = 'evenodd'
+        self.data = []  # list of tuples (type, value)
+
     def __enter__(self):
-        self.route = []
         return self
 
-    def add_point(self, point):
-        self.route.append(point)
+    def add_chunk(self, chunk):
+        self.data.append(chunk)
+
+    def add_line_point(self, point):
+        self.data.append(('line', point))
+
+    def append_data(self, path):
+        self.data += path.data
 
     @staticmethod
     def _process_point(mark, point):
         return "{mark} {point.x} {point.y}".format(mark=mark, point=point)
 
-    def head(self):
-        if self.route:
-            return [self._process_point('M', self.route[0])]
-        return []
-
-    def tail(self):
-        return [self._process_point('L', p) for p in self.route[1:]]
-
     def __exit__(self, type, value, traceback):
         pass
 
+    def d_sequence(self):
+        first_point = True
+        for entry in self.data:
+            if entry[0] == 'line':
+                if first_point:
+                    mark = 'M'
+                    first_point = False
+                else:
+                    mark = 'L'
+                yield self._process_point(mark=mark, point=entry[1])
+
     @property
     def d(self):
-        return " ".join(self.head() + self.tail())
+        return " ".join(list(self.d_sequence()))
+
+    def set_attributes(self, stroke, linewidth, lstyle, fill, fill_opacity):
+        self.stroke = stroke
+        self.stroke_width = str(linewidth) + ' px'
+        self.stroke_dasharray = lstyle
+        self.fill = fill
+        self.fill_opacity = fill_opacity
+
+    def to_string(self):
+        styles = [
+            'stroke-width: %s' % self.stroke_width,
+            'stroke-miterlimit: %s' % self.stroke_miterlimit,
+            'stroke-dasharray: %s' % self.stroke_dasharray,
+            'fill: %s' % self.fill,
+            'fill-rule: %s' % self.fill_rule
+        ]
+        if self.fill_opacity:
+            styles.append("fill-opacity: %s " % self.fill_opacity)
+        tag_pieces = [
+            '<path',
+            'id="%s"' % self.name,
+            'stroke="%s"' % self.stroke,
+            'stroke-width="%s"' % self.stroke_width,
+            'style="%s"' % (';'.join(styles)),
+            self.d,
+            '/>\n'
+        ]
+        text = " ".join(tag_pieces)
+        return text
 
 
 def getDraftParam(param_name, default_value):
@@ -110,7 +158,7 @@ def get_discretized(edge, plane):
             seg_vector = edge.FirstParameter + \
                 ((float(segment) / segments) * edge_distance)
             v = getProj(edge.valueAt(seg_vector), plane)
-            edata.add_point(v)
+            edata.add_line_point(v)
     return edata
 
 
@@ -153,6 +201,25 @@ def getCircle(edge, plane, fill, stroke, linewidth, lstyle):
     return svg
 
 
+def group_edges(edges, wires):
+    if not wires:
+        egroups = Part.sortEdges(edges)
+    else:
+        for wire in wires:
+            wire_copy = wire.copy()
+            wire_copy.fixWire()
+            egroups.append(Part.__sortEdges__(wire_copy.Edges))
+    return egroups
+
+
+def try_get_opacity(fill_opacity):
+    try:
+        fill_opacity = str(fill_opacity)
+    except NameError:
+        fill_opacity = None
+    return fill_opacity
+
+
 def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wires=[], pathname=None):
     # I REALLY NEED to fix pathdata here. Passing a list to be modified in func
     # is terrible
@@ -162,15 +229,7 @@ def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wir
     elif pathname != "":
         svg += 'id="%s" ' % pathname
     svg += ' d="'
-    if not wires:
-        egroups = Part.sortEdges(edges)
-    else:
-        egroups = []
-        for w in wires:
-            w1=w.copy()
-            w1.fixWire()
-            egroups.append(Part.__sortEdges__(w1.Edges))
-    for egroupindex, edges in enumerate(egroups):
+    for egroupindex, edges in enumerate(group_edges(edges, wires)):
         edata = ""
         vs=() #skipped for the first edge
         for edgeindex,e in enumerate(edges):

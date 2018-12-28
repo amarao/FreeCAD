@@ -35,20 +35,20 @@ class GetSVGTest_path(unittest.TestCase):
 
     def test_good_one(self):
         with svg.path() as path:
-            path.add_point(svg.Vector(0, 0, 0))
+            path.add_line_point(svg.Vector(0, 0, 0))
         self.assertEqual(path.d, "M 0.0 0.0")
 
     def test_good_line(self):
         with svg.path() as path:
-            path.add_point(svg.Vector(0, 0, 0))
-            path.add_point(svg.Vector(1, 1, 0))
+            path.add_line_point(svg.Vector(0, 0, 0))
+            path.add_line_point(svg.Vector(1, 1, 0))
         self.assertEqual(path.d, "M 0.0 0.0 L 1.0 1.0")
 
     def test_good_three(self):
         with svg.path() as path:
-            path.add_point(svg.Vector(0, 0, 0))
-            path.add_point(svg.Vector(10, 1, 0))
-            path.add_point(svg.Vector(0, -10, 0))
+            path.add_line_point(svg.Vector(0, 0, 0))
+            path.add_line_point(svg.Vector(10, 1, 0))
+            path.add_line_point(svg.Vector(0, -10, 0))
         self.assertEqual(path.d, "M 0.0 0.0 L 10.0 1.0 L 0.0 -10.0")
 
 
