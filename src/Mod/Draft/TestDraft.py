@@ -351,6 +351,8 @@ class GetSVGTest_getDiscretized(unittest.TestCase):
 
 class GetSVGTest_get_drawing_plane_normal(unittest.TestCase):
 
+    # test order is important as we irevversibly mess with workplane state
+
     doc_name = "GetSVGTest_get_drawing_plane_normal"
 
     def setUp(self):
@@ -361,28 +363,32 @@ class GetSVGTest_get_drawing_plane_normal(unittest.TestCase):
         else:
             FreeCAD.newDocument(self.doc_name)
         FreeCAD.setActiveDocument(self.doc_name)
-        self.plane = svg.WorkingPlane.plane(
-            svg.Vector(1, 1, 0),
-            svg.Vector(0, 1, 1),
-            svg.Vector(1, 0, 1)
-        )
+
+        self.opened = True
 
     def tearDown(self):
-        FreeCAD.closeDocument(self.doc_name)
+        if self.opened:
+            FreeCAD.closeDocument(self.doc_name)
+            self.opened = False
 
-    def test_good_plane(self):
-        self.assertEqual(
-            svg.get_drawing_plane_normal(self.plane),
-            FreeCAD.Vector(1, 0, 1)
-        )
-
-    def test_good_nothing_available(self):
+    def test_good_1_nothing_available(self):
         self.assertEqual(
             svg.get_drawing_plane_normal(None),
             FreeCAD.Vector(0, 0, 1)
         )
 
-    def test_good_draft_working_plane(self):
+    def test_good_2_plane(self):
+        self.plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 1, 0),
+            svg.Vector(0, 1, 1),
+            svg.Vector(1, 0, 1)
+        )
+        self.assertEqual(
+            svg.get_drawing_plane_normal(self.plane),
+            FreeCAD.Vector(1, 0, 1)
+        )
+
+    def test_good_3_draft_working_plane(self):
         FreeCAD.DraftWorkingPlane.alignToPointAndAxis(
             FreeCAD.Vector(-1, 0, 0),
             FreeCAD.Vector(0, -1, 0),
@@ -392,6 +398,8 @@ class GetSVGTest_get_drawing_plane_normal(unittest.TestCase):
             svg.get_drawing_plane_normal(None),
             FreeCAD.Vector(0, -1, 0)
         )
+
+
 
 
 class GetSVGTest_getPath(unittest.TestCase):
