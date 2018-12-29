@@ -34,9 +34,6 @@ class path:
     def __enter__(self):
         return self
 
-    def add_chunk(self, chunk):
-        self.data.append(chunk)
-
     def lineto(self, point):
         if not self.data:
             self.moveto(point)
@@ -52,26 +49,35 @@ class path:
     def vertical_lineto(self, coordinate):
         self.data.append(('V', (float(coordinate), )))
 
-    def curveto(self, point):
-        pass
+    def curveto(self, start, end, to):
+        self.data.append(('C', (start.x, start.y, end.x, end.y, to.x, to.y)))
 
     def smooth_curveto(self, point):
         pass
 
-    def quadratic_bezier_curveto(self, point):
-        pass
+    def quadratic_bezier_curveto(self, start, to):
+        self.data.append(('Q', (start.x, start.y, to.x, to.y)))
 
     def smooth_quadratic_bezier_curveto(self, point):
         pass
 
-    def elliptical_arc(self, point):
-        pass
+    def elliptical_arc(self, rx, ry, x_axis_rotation, large_arc_flag,
+                       sweep_flag, point):
+        self.data.append(('A', (
+            float(rx),
+            float(ry),
+            float(x_axis_rotation),
+            int(large_arc_flag),
+            int(sweep_flag),
+            point.x,
+            point.y
+        )))
 
     def closepath(self):
         self.data.append(('Z', ()))
 
-    def append_data(self, path):
-        self.data += path.data
+    def append_data(self, another_path):
+        self.data += another_path.data
 
     def __exit__(self, type, value, traceback):
         if self.data and self.data[0][0] != 'M':
@@ -92,28 +98,28 @@ class path:
 
     def set_attributes(self, stroke, linewidth, lstyle, fill, fill_opacity):
         self.stroke = stroke
-        self.stroke_width = str(linewidth) + ' px'
+        self.stroke_width = str(linewidth)
         self.stroke_dasharray = lstyle
         self.fill = fill
         self.fill_opacity = fill_opacity
 
     def to_string(self):
         styles = [
-            'stroke-width: %s' % self.stroke_width,
-            'stroke-miterlimit: %s' % self.stroke_miterlimit,
-            'stroke-dasharray: %s' % self.stroke_dasharray,
-            'fill: %s' % self.fill,
-            'fill-rule: %s' % self.fill_rule
+            'stroke-width:%s' % self.stroke_width,
+            'stroke-miterlimit:%s' % self.stroke_miterlimit,
+            'stroke-dasharray:%s' % self.stroke_dasharray,
+            'fill:%s' % self.fill,
+            'fill-rule:%s' % self.fill_rule
         ]
         if self.fill_opacity:
             styles.append("fill-opacity: %s " % self.fill_opacity)
         tag_pieces = [
             '<path',
             'id="%s"' % self.name,
+            'd="%s"' % self.d,
             'stroke="%s"' % self.stroke,
-            'stroke-width="%s"' % self.stroke_width,
+            'stroke-width="%s px"' % self.stroke_width,
             'style="%s"' % (';'.join(styles)),
-            self.d,
             '/>\n'
         ]
         text = " ".join(tag_pieces)
@@ -259,144 +265,139 @@ def try_get_opacity(fill_opacity):
 def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wires=[], pathname=None):
     # I REALLY NEED to fix pathdata here. Passing a list to be modified in func
     # is terrible
-    svg = "<path "
-    if pathname is None:
-        svg += 'id="%s" ' % obj.Name
-    elif pathname != "":
-        svg += 'id="%s" ' % pathname
-    svg += ' d="'
-    for egroupindex, edges in enumerate(group_edges(edges, wires)):
-        edata = ""
-        vs=() #skipped for the first edge
-        for edgeindex,e in enumerate(edges):
-            previousvs = vs
-            # vertexes of an edge (reversed if needed)
-            vs = e.Vertexes
-            if previousvs:
-                if (vs[0].Point-previousvs[-1].Point).Length > 1e-6:
-                    vs.reverse()
-            if edgeindex == 0:
-                v = getProj(vs[0].Point, plane)
-                edata += 'M '+ str(v.x) +' '+ str(v.y) + ' '
-            else:
-                if (vs[0].Point-previousvs[-1].Point).Length > 1e-6:
-                    raise ValueError('edges not ordered')
-            iscircle = DraftGeomUtils.geomType(e) == "Circle"
-            isellipse = DraftGeomUtils.geomType(e) == "Ellipse"
-            if iscircle or isellipse:
-                if hasattr(FreeCAD,"DraftWorkingPlane"):
-                    drawing_plane_normal = FreeCAD.DraftWorkingPlane.axis
+    with path(name=pathname or obj.Name) as p:
+        for egroupindex, edges in enumerate(group_edges(edges, wires)):
+            vs=() #skipped for the first edge
+            for edgeindex,e in enumerate(edges):
+                previousvs = vs
+                # vertexes of an edge (reversed if needed)
+                vs = e.Vertexes
+                if previousvs:
+                    if (vs[0].Point-previousvs[-1].Point).Length > 1e-6:
+                        vs.reverse()
+                if edgeindex == 0:
+                    v = getProj(vs[0].Point, plane)
+                    p.moveto(v)
                 else:
-                    drawing_plane_normal = FreeCAD.Vector(0,0,1)
-                if plane: drawing_plane_normal = plane.axis
-                c = e.Curve
-                if round(c.Axis.getAngle(drawing_plane_normal),2) in [0,3.14]:
-                    occversion = Part.OCC_VERSION.split(".")
-                    done = False
-                    if (int(occversion[0]) >= 7) and (int(occversion[1]) >= 1):
-                        # if using occ >= 7.1, use HLR algorithm
-                        snip = Drawing.projectToSVG(e,drawing_plane_normal)
-                        if snip:
-                            try:
-                                a = "A " + snip.split("path d=\"")[1].split("\"")[0].split("A")[1]
-                            except:
-                                pass
+                    if (vs[0].Point-previousvs[-1].Point).Length > 1e-6:
+                        raise ValueError('edges not ordered')
+                iscircle = DraftGeomUtils.geomType(e) == "Circle"
+                isellipse = DraftGeomUtils.geomType(e) == "Ellipse"
+                if iscircle or isellipse:
+                    if hasattr(FreeCAD,"DraftWorkingPlane"):
+                        drawing_plane_normal = FreeCAD.DraftWorkingPlane.axis
+                    else:
+                        drawing_plane_normal = FreeCAD.Vector(0,0,1)
+                    if plane: drawing_plane_normal = plane.axis
+                    c = e.Curve
+                    if round(c.Axis.getAngle(drawing_plane_normal),2) in [0,3.14]:
+                        occversion = Part.OCC_VERSION.split(".")
+                        done = False
+                        if (int(occversion[0]) >= 7) and (int(occversion[1]) >= 1):
+                            raise NotImplemented
+                            # if using occ >= 7.1, use HLR algorithm
+                            snip = Drawing.projectToSVG(e,drawing_plane_normal)
+                            if snip:
+                                try:
+                                    a = "A " + snip.split("path d=\"")[1].split("\"")[0].split("A")[1]
+                                except:
+                                    pass
+                                else:
+                                    edata += a
+                                    done = True
+                        if not done:
+                            if len(e.Vertexes) == 1 and iscircle: #complete curve
+                                svg = getCircle(e, plane, fill, stroke, linewidth, lstyle)
+                                return svg
+                            elif len(e.Vertexes) == 1 and isellipse:
+                                #svg = getEllipse(e)
+                                #return svg
+                                endpoints = (getProj(c.value((c.LastParameter-\
+                                        c.FirstParameter)/2.0), plane), \
+                                        getProj(vs[-1].Point, plane))
                             else:
-                                edata += a
-                                done = True
-                    if not done:
-                        if len(e.Vertexes) == 1 and iscircle: #complete curve
-                            svg = getCircle(e, plane, fill, stroke, linewidth, lstyle)
-                            return svg
-                        elif len(e.Vertexes) == 1 and isellipse:
-                            #svg = getEllipse(e)
-                            #return svg
-                            endpoints = (getProj(c.value((c.LastParameter-\
-                                    c.FirstParameter)/2.0), plane), \
-                                    getProj(vs[-1].Point, plane))
-                        else:
-                            endpoints = (getProj(vs[-1].Point), plane)
-                        # arc
-                        if iscircle:
-                            rx = ry = c.Radius
-                            rot = 0
-                        else: #ellipse
-                            rx = c.MajorRadius
-                            ry = c.MinorRadius
-                            rot = math.degrees(c.AngleXU * (c.Axis * \
-                                FreeCAD.Vector(0,0,1)))
-                            if rot > 90:
-                                rot -=180
-                            if rot < -90:
-                                rot += 180
-                            #be careful with the sweep flag
-                        flag_large_arc = (((e.ParameterRange[1] - \
-                                e.ParameterRange[0]) / math.pi) % 2) > 1
-                        #flag_sweep = (c.Axis * drawing_plane_normal >= 0) \
-                        #         == (e.LastParameter > e.FirstParameter)
-                        #        == (e.Orientation == "Forward")
-                        # other method: check the direction of the angle between tangents
-                        t1 = e.tangentAt(e.FirstParameter)
-                        t2 = e.tangentAt(e.FirstParameter + (e.LastParameter-e.FirstParameter)/10)
-                        flag_sweep = (DraftVecUtils.angle(t1,t2,drawing_plane_normal) < 0)
-                        for v in endpoints:
-                            edata += 'A %s %s %s %s %s %s %s ' % \
-                                    (str(rx),str(ry),str(rot),\
-                                    str(int(flag_large_arc)),\
-                                    str(int(flag_sweep)),str(v.x),str(v.y))
+                                endpoints = (getProj(vs[-1].Point), plane)
+                            # arc
+                            if iscircle:
+                                rx = ry = c.Radius
+                                rot = 0
+                            else: #ellipse
+                                rx = c.MajorRadius
+                                ry = c.MinorRadius
+                                rot = math.degrees(c.AngleXU * (c.Axis * \
+                                    FreeCAD.Vector(0,0,1)))
+                                if rot > 90:
+                                    rot -=180
+                                if rot < -90:
+                                    rot += 180
+                                #be careful with the sweep flag
+                            flag_large_arc = (((e.ParameterRange[1] - \
+                                    e.ParameterRange[0]) / math.pi) % 2) > 1
+                            #flag_sweep = (c.Axis * drawing_plane_normal >= 0) \
+                            #         == (e.LastParameter > e.FirstParameter)
+                            #        == (e.Orientation == "Forward")
+                            # other method: check the direction of the angle between tangents
+                            t1 = e.tangentAt(e.FirstParameter)
+                            t2 = e.tangentAt(e.FirstParameter + (e.LastParameter-e.FirstParameter)/10)
+                            flag_sweep = (DraftVecUtils.angle(t1,t2,drawing_plane_normal) < 0)
+                            for v in endpoints:
+                                p.elliptical_arc(
+                                    rx=rx,
+                                    ry=ry,
+                                    x_axis_rotation=rot,
+                                    large_arc_flag=flag_large_arc,
+                                    sweep_flag=flag_sweep,
+                                    point=v
+                                )
+                    else:
+                        p.append_data(get_discretized(e, plane))
+                elif DraftGeomUtils.geomType(e) == "Line":
+                    v = getProj(vs[-1].Point, plane)
+                    p.lineto(v)
                 else:
-                    edata += getDiscretized(e, plane)
-            elif DraftGeomUtils.geomType(e) == "Line":
-                v = getProj(vs[-1].Point, plane)
-                edata += 'L '+ str(v.x) +' '+ str(v.y) + ' '
-            else:
-                bspline=e.Curve.toBSpline(e.FirstParameter,e.LastParameter)
-                if bspline.Degree > 3 or bspline.isRational():
-                    try:
-                        bspline=bspline.approximateBSpline(0.05,50, 3,'C0')
-                    except RuntimeError:
-                        print("Debug: unable to approximate bspline")
-                if bspline.Degree <= 3 and not bspline.isRational():
-                    for bezierseg in bspline.toBezier():
-                        if bezierseg.Degree>3: #should not happen
-                            raise AssertionError
-                        elif bezierseg.Degree==1:
-                            edata +='L '
-                        elif bezierseg.Degree==2:
-                            edata +='Q '
-                        elif bezierseg.Degree==3:
-                            edata +='C '
-                        for pole in bezierseg.getPoles()[1:]:
-                            v = getProj(pole, plane)
-                            edata += str(v.x) +' '+ str(v.y) + ' '
-                else:
-                    print("Debug: one edge (hash ",e.hashCode(),\
-                            ") has been discretized with parameter 0.1")
-                    for linepoint in bspline.discretize(0.1)[1:]:
-                        v = getProj(linepoint, plane)
-                        edata += 'L '+ str(v.x) +' '+ str(v.y) + ' '
-        if fill != 'none':
-            edata += 'Z '
-        if edata in pathdata:
+                    bspline=e.Curve.toBSpline(e.FirstParameter,e.LastParameter)
+                    if bspline.Degree > 3 or bspline.isRational():
+                        try:
+                            bspline=bspline.approximateBSpline(0.05,50, 3,'C0')
+                        except RuntimeError:
+                            print("Debug: unable to approximate bspline")
+                    if bspline.Degree <= 3 and not bspline.isRational():
+                        for bezierseg in bspline.toBezier():
+                            proj_poles = [
+                                getProj(pole, plane)
+                                for pole in bezierseg.getPoles()[1:]
+                            ]
+                            if bezierseg.Degree == 1:
+                                p.lineto(proj_poles[0])
+                            elif bezierseg.Degree == 2:
+                                p.quadratic_bezier_curveto(*proj_poles[:2])
+                            elif bezierseg.Degree == 3:
+                                p.curveto(*proj_poles[:3])
+                            else:  # should not happen
+                                raise AssertionError("Wrong degree for bezier")
+                    else:
+                        print("Debug: one edge (hash ", e.hashCode(),
+                              ") has been discretized with parameter 0.1")
+                        for linepoint in bspline.discretize(0.1)[1:]:
+                            v = getProj(linepoint, plane)
+                            p.lineto(v)
+        if p.d in pathdata:
             # do not draw a path on another identical path
             return ""
         else:
-            svg += edata
-            pathdata.append(edata)
-    svg += '" '
-    svg += 'stroke="' + stroke + '" '
-    svg += 'stroke-width="' + str(linewidth) + ' px" '
-    svg += 'style="stroke-width:'+ str(linewidth)
-    svg += ';stroke-miterlimit:4'
-    svg += ';stroke-dasharray:' + lstyle
-    svg += ';fill:' + fill
-    try:
-        svg += ';fill-opacity:' + str(fill_opacity)
-    except NameError:
-        pass
-    svg += ';fill-rule: evenodd "'
-    svg += '/>\n'
-    return svg
+            pathdata.append(p.d)
+        try:
+            fill_opacity = str(fill_opacity)
+        except NameError:
+            fill_opacity = None
+        p.set_attributes(
+            stroke=stroke,
+            linewidth=linewidth,
+            lstyle=lstyle,
+            fill=fill,
+            fill_opacity=fill_opacity
+        )
+    return p.to_string()
 
 
 def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direction=None,linestyle=None,color=None,linespacing=None,techdraw=False,rotation=0):
