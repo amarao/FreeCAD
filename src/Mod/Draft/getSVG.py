@@ -205,6 +205,7 @@ def group_edges(edges, wires):
     if not wires:
         egroups = Part.sortEdges(edges)
     else:
+        egroups = []
         for wire in wires:
             wire_copy = wire.copy()
             wire_copy.fixWire()
