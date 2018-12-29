@@ -73,6 +73,16 @@ class GetSVGTest_path(unittest.TestCase):
             path.vertical_lineto(-1)
         self.assertEqual(path.d, "M 0.0 0.0 V 3.0 M 0.0 -10.0 V -1.0 V -1.0")
 
+    def test_good_append_data(self):
+        with svg.path() as path1:
+            path1.moveto(svg.Vector(0, 0, 0))
+            path1.lineto(svg.Vector(1, 1, 0))
+        with svg.path() as path2:
+            path2.moveto(svg.Vector(0, -10, 0))
+            path2.lineto(svg.Vector(2, 2, 0))
+        path1.append_data(path2)
+        self.assertEqual(path1.d, "M 0.0 0.0 L 1.0 1.0 M 0.0 -10.0 L 2.0 2.0")
+
     def test_bad_no_moveto_at_begining(self):
         with self.assertRaises(ValueError):
             with svg.path() as path:
