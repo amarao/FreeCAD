@@ -73,6 +73,9 @@ class path:
             point.y
         )))
 
+    def add_raw_data(self, type, blob):
+        self.data.append((type, (blob,)))
+
     def closepath(self):
         self.data.append(('Z', ()))
 
@@ -294,17 +297,17 @@ def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wir
                         occversion = Part.OCC_VERSION.split(".")
                         done = False
                         if (int(occversion[0]) >= 7) and (int(occversion[1]) >= 1):
-                            raise NotImplemented
                             # if using occ >= 7.1, use HLR algorithm
+                            import Drawing
                             snip = Drawing.projectToSVG(e,drawing_plane_normal)
                             if snip:
                                 try:
-                                    a = "A " + snip.split("path d=\"")[1].split("\"")[0].split("A")[1]
-                                except:
-                                    pass
-                                else:
-                                    edata += a
+                                    string_a = snip.split("path d=\"")[1].\
+                                        split("\"")[0].split("A")[1]
+                                    p.add_raw_data('A', string_a)
                                     done = True
+                                except Exception:
+                                    pass
                         if not done:
                             if len(e.Vertexes) == 1 and iscircle: #complete curve
                                 svg = getCircle(e, plane, fill, stroke, linewidth, lstyle)
