@@ -265,13 +265,38 @@ def try_get_opacity(fill_opacity):
     return fill_opacity
 
 
-def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wires=[], pathname=None):
+def get_drawing_plane_normal(plane):
+    if plane:
+        return plane.axis
+    if hasattr(FreeCAD, "DraftWorkingPlane"):
+        return FreeCAD.DraftWorkingPlane.axis
+    return FreeCAD.Vector(0, 0, 1)
+
+
+def get_occ_projection(edge, drawing_plane_normal):
+    occversion = Part.OCC_VERSION.split(".")
+    if (int(occversion[0]) >= 7) and (int(occversion[1]) >= 1):
+        # if using occ >= 7.1, use HLR algorithm
+        import Drawing
+        snip = Drawing.projectToSVG(edge, drawing_plane_normal)
+        if snip:
+            try:
+                a_string = snip.split("path d=\"")[1].\
+                    split("\"")[0].split("A")[1]
+                return a_string
+            except Exception:
+                pass
+
+
+def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[],
+            wires=[], pathname=None
+            ):
     # I REALLY NEED to fix pathdata here. Passing a list to be modified in func
     # is terrible
     with path(name=pathname or obj.Name) as p:
         for egroupindex, edges in enumerate(group_edges(edges, wires)):
-            vs=() #skipped for the first edge
-            for edgeindex,e in enumerate(edges):
+            vs = ()  # skipped for the first edge
+            for edgeindex, e in enumerate(edges):
                 previousvs = vs
                 # vertexes of an edge (reversed if needed)
                 vs = e.Vertexes
@@ -279,36 +304,21 @@ def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wir
                     if (vs[0].Point-previousvs[-1].Point).Length > 1e-6:
                         vs.reverse()
                 if edgeindex == 0:
-                    v = getProj(vs[0].Point, plane)
-                    p.moveto(v)
+                    p.moveto(getProj(vs[0].Point, plane))
                 else:
                     if (vs[0].Point-previousvs[-1].Point).Length > 1e-6:
                         raise ValueError('edges not ordered')
                 iscircle = DraftGeomUtils.geomType(e) == "Circle"
                 isellipse = DraftGeomUtils.geomType(e) == "Ellipse"
                 if iscircle or isellipse:
-                    if hasattr(FreeCAD,"DraftWorkingPlane"):
-                        drawing_plane_normal = FreeCAD.DraftWorkingPlane.axis
-                    else:
-                        drawing_plane_normal = FreeCAD.Vector(0,0,1)
-                    if plane: drawing_plane_normal = plane.axis
+                    drawing_plane_normal = get_drawing_plane_normal(plane)
                     c = e.Curve
-                    if round(c.Axis.getAngle(drawing_plane_normal),2) in [0,3.14]:
-                        occversion = Part.OCC_VERSION.split(".")
-                        done = False
-                        if (int(occversion[0]) >= 7) and (int(occversion[1]) >= 1):
-                            # if using occ >= 7.1, use HLR algorithm
-                            import Drawing
-                            snip = Drawing.projectToSVG(e,drawing_plane_normal)
-                            if snip:
-                                try:
-                                    string_a = snip.split("path d=\"")[1].\
-                                        split("\"")[0].split("A")[1]
-                                    p.add_raw_data('A', string_a)
-                                    done = True
-                                except Exception:
-                                    pass
-                        if not done:
+                    if round(c.Axis.getAngle(drawing_plane_normal), 2) in \
+                            [0, 3.14]:
+                        a_string = get_occ_projection(e, drawing_plane_normal)
+                        if a_string:
+                            p.add_raw_data('A', a_string)
+                        else:
                             if len(e.Vertexes) == 1 and iscircle: #complete curve
                                 svg = getCircle(e, plane, fill, stroke, linewidth, lstyle)
                                 return svg
@@ -355,8 +365,7 @@ def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[], wir
                     else:
                         p.append_data(get_discretized(e, plane))
                 elif DraftGeomUtils.geomType(e) == "Line":
-                    v = getProj(vs[-1].Point, plane)
-                    p.lineto(v)
+                    p.lineto(getProj(vs[-1].Point, plane))
                 else:
                     bspline=e.Curve.toBSpline(e.FirstParameter,e.LastParameter)
                     if bspline.Degree > 3 or bspline.isRational():
