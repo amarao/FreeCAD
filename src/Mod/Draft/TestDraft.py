@@ -349,6 +349,51 @@ class GetSVGTest_getDiscretized(unittest.TestCase):
         )
 
 
+class GetSVGTest_get_drawing_plane_normal(unittest.TestCase):
+
+    doc_name = "GetSVGTest_get_drawing_plane_normal"
+
+    def setUp(self):
+        # setting a new document to hold the tests
+        if FreeCAD.ActiveDocument:
+            if FreeCAD.ActiveDocument.Name != self.doc_name:
+                FreeCAD.newDocument(self.doc_name)
+        else:
+            FreeCAD.newDocument(self.doc_name)
+        FreeCAD.setActiveDocument(self.doc_name)
+        self.plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 1, 0),
+            svg.Vector(0, 1, 1),
+            svg.Vector(1, 0, 1)
+        )
+
+    def tearDown(self):
+        FreeCAD.closeDocument(self.doc_name)
+
+    def test_good_plane(self):
+        self.assertEqual(
+            svg.get_drawing_plane_normal(self.plane),
+            FreeCAD.Vector(1, 0, 1)
+        )
+
+    def test_good_nothing_available(self):
+        self.assertEqual(
+            svg.get_drawing_plane_normal(None),
+            FreeCAD.Vector(0, 0, 1)
+        )
+
+    def test_good_draft_working_plane(self):
+        FreeCAD.DraftWorkingPlane.alignToPointAndAxis(
+            FreeCAD.Vector(-1, 0, 0),
+            FreeCAD.Vector(0, -1, 0),
+            0
+        )
+        self.assertEqual(
+            svg.get_drawing_plane_normal(None),
+            FreeCAD.Vector(0, -1, 0)
+        )
+
+
 class GetSVGTest_getPath(unittest.TestCase):
 
     doc_name = "GetSVGTest_getPath"
