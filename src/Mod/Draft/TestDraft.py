@@ -23,7 +23,10 @@
 #*                                                                         *
 #***************************************************************************/
 
-import FreeCAD, os, unittest, FreeCADGui, Draft
+import FreeCAD
+import unittest
+import FreeCADGui
+import Draft
 from Draft import svg
 
 
@@ -33,23 +36,51 @@ class GetSVGTest_path(unittest.TestCase):
             pass
         self.assertEqual(path.d, "")
 
-    def test_good_one(self):
+    def test_good_one_lineto(self):
         with svg.path() as path:
-            path.add_line_point(svg.Vector(0, 0, 0))
+            path.lineto(svg.Vector(0, 0, 0))
         self.assertEqual(path.d, "M 0.0 0.0")
 
-    def test_good_line(self):
+    def test_good_two_lineto(self):
         with svg.path() as path:
-            path.add_line_point(svg.Vector(0, 0, 0))
-            path.add_line_point(svg.Vector(1, 1, 0))
+            path.lineto(svg.Vector(0, 0, 0))
+            path.lineto(svg.Vector(1, 1, 0))
         self.assertEqual(path.d, "M 0.0 0.0 L 1.0 1.0")
 
-    def test_good_three(self):
+    def test_good_three_lineto(self):
         with svg.path() as path:
-            path.add_line_point(svg.Vector(0, 0, 0))
-            path.add_line_point(svg.Vector(10, 1, 0))
-            path.add_line_point(svg.Vector(0, -10, 0))
+            path.lineto(svg.Vector(0, 0, 0))
+            path.lineto(svg.Vector(10, 1, 0))
+            path.lineto(svg.Vector(0, -10, 0))
         self.assertEqual(path.d, "M 0.0 0.0 L 10.0 1.0 L 0.0 -10.0")
+
+    def test_good_horizontal_lineto(self):
+        with svg.path() as path:
+            path.moveto(svg.Vector(0, 0, 0))
+            path.horizontal_lineto(3)
+            path.moveto(svg.Vector(0, -10, 0))
+            path.horizontal_lineto(-1)
+            path.horizontal_lineto(-1)
+        self.assertEqual(path.d, "M 0.0 0.0 H 3.0 M 0.0 -10.0 H -1.0 H -1.0")
+
+    def test_good_vertical_lineto(self):
+        with svg.path() as path:
+            path.moveto(svg.Vector(0, 0, 0))
+            path.vertical_lineto(3)
+            path.moveto(svg.Vector(0, -10, 0))
+            path.vertical_lineto(-1)
+            path.vertical_lineto(-1)
+        self.assertEqual(path.d, "M 0.0 0.0 V 3.0 M 0.0 -10.0 V -1.0 V -1.0")
+
+    def test_bad_no_moveto_at_begining(self):
+        with self.assertRaises(ValueError):
+            with svg.path() as path:
+                path.horizontal_lineto(1)
+
+    def test_bad_context_manager_passes_exception(self):
+        with self.assertRaises(AttributeError):
+            with svg.path() as path:
+                path.moveto(dict)
 
 
 class GetSVGTest_getDraftParam(unittest.TestCase):

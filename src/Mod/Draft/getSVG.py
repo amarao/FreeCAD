@@ -10,6 +10,16 @@ from Draft import getType, getrgb, svgpatterns, gui
 
 
 class path:
+    '''
+        Implements small subset of SVG path element properties
+        most functions (lineto, curveto) supports Vectors
+        instead of coordinate pair. Coordinate sequence does not
+        supported.
+
+        If lineto is called first (instead of moveto),
+        it converts to 'moveto',
+    '''
+
     def __init__(self, name=None):
         self.name = name
         self.stroke = 'none'
@@ -27,33 +37,58 @@ class path:
     def add_chunk(self, chunk):
         self.data.append(chunk)
 
-    def add_line_point(self, point):
-        self.data.append(('line', point))
+    def lineto(self, point):
+        if not self.data:
+            self.moveto(point)
+        else:
+            self.data.append(('L', (point.x, point.y)))
+
+    def moveto(self, point):
+        self.data.append(('M', (point.x, point.y)))
+
+    def horizontal_lineto(self, coordinate):
+        self.data.append(('H', (float(coordinate), )))
+
+    def vertical_lineto(self, coordinate):
+        self.data.append(('V', (float(coordinate), )))
+
+    def curveto(self, point):
+        pass
+
+    def smooth_curveto(self, point):
+        pass
+
+    def quadratic_bezier_curveto(self, point):
+        pass
+
+    def smooth_quadratic_bezier_curveto(self, point):
+        pass
+
+    def elliptical_arc(self, point):
+        pass
+
+    def closepath(self):
+        self.data.append(('Z', ()))
 
     def append_data(self, path):
         self.data += path.data
 
-    @staticmethod
-    def _process_point(mark, point):
-        return "{mark} {point.x} {point.y}".format(mark=mark, point=point)
-
     def __exit__(self, type, value, traceback):
-        pass
+        if self.data and self.data[0][0] != 'M':
+            raise ValueError("path should start with 'moveto'")
 
     def d_sequence(self):
-        first_point = True
-        for entry in self.data:
-            if entry[0] == 'line':
-                if first_point:
-                    mark = 'M'
-                    first_point = False
-                else:
-                    mark = 'L'
-                yield self._process_point(mark=mark, point=entry[1])
+        for (mark, point) in self.data:
+            yield mark
+            for arg in point:
+                yield str(arg)
 
     @property
     def d(self):
-        return " ".join(list(self.d_sequence()))
+        main_sequence = list(self.d_sequence())
+        if self.fill != 'none':
+            main_sequence.append('Z')
+        return " ".join(main_sequence)
 
     def set_attributes(self, stroke, linewidth, lstyle, fill, fill_opacity):
         self.stroke = stroke
@@ -153,13 +188,13 @@ def get_discretized(edge, plane):
     max_segment_length = getDraftParam("svgDiscretization", 10.0)
     segments = max(1, abs(int(edge.Length/max_segment_length)))
     edge_distance = edge.LastParameter - edge.FirstParameter
-    with path() as edata:
+    with path() as p:
         for segment in range(segments + 1):
             seg_vector = edge.FirstParameter + \
                 ((float(segment) / segments) * edge_distance)
-            v = getProj(edge.valueAt(seg_vector), plane)
-            edata.add_line_point(v)
-    return edata
+            vec = getProj(edge.valueAt(seg_vector), plane)
+            p.lineto(vec)
+    return p
 
 
 def getDiscretized(edge, plane):
