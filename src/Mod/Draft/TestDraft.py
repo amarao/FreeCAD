@@ -27,6 +27,7 @@ import FreeCAD
 import unittest
 import FreeCADGui
 import Draft
+import re
 from Draft import svg
 
 
@@ -362,6 +363,20 @@ class GetSVGTest_getPath(unittest.TestCase):
     def tearDown(self):
         FreeCAD.closeDocument(self.doc_name)
 
+    def defuzzy(self, string):
+        '''
+            To keep original output data pristine, we clearing out some
+            fuzziness in output (double spaces, spaces before quotation, etc)
+        '''
+        no_linefeeds = re.sub('\n', '', string)
+        no_double_spaces = re.sub('\s+', ' ', no_linefeeds)
+        no_spaces_before_quotes = re.sub(' "', '"', no_double_spaces)
+        no_spaces_after_quotes = re.sub('" ', '"', no_spaces_before_quotes)
+        no_spaces_before_end = re.sub(' /', '/', no_spaces_after_quotes)
+        no_spaces_after_semi = re.sub('; ', ';', no_spaces_before_end)
+        no_spaces_after_column = re.sub(': ', ':', no_spaces_after_semi)
+        return no_spaces_after_column
+
     def test_good_rectangle(self):
         rec = Draft.makeRectangle(
             length=4,
@@ -371,19 +386,31 @@ class GetSVGTest_getPath(unittest.TestCase):
             support=None
         )
         self.assertEqual(
-            svg.getPath(
-                plane=self.plane,
-                fill="none",
-                stroke="#000000",
-                linewidth=0.21,
-                lstyle="none",
-                obj=rec,
-                pathdata=[],
-                edges=rec.Shape.Edges,
-                wires=[],
-                pathname=None
+            self.defuzzy(
+                svg.getPath(
+                    plane=self.plane,
+                    fill="none",
+                    stroke="#000000",
+                    linewidth=0.21,
+                    lstyle="none",
+                    obj=rec,
+                    pathdata=[],
+                    edges=rec.Shape.Edges,
+                    wires=[],
+                    pathname=None
+                )
             ),
-            '''<path id="Rectangle"  d="M -1.5 -1.0 L -3.03846153846 2.69230769231 L -4.88461538462 1.92307692308 L -3.34615384615 -1.76923076923 L -1.5 -1.0 " stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+            self.defuzzy(
+                '''<path id="Rectangle"
+                    d="M -1.5 -1.0 L -3.03846153846 2.69230769231
+                        L -4.88461538462 1.92307692308
+                        L -3.34615384615 -1.76923076923
+                        L -1.5 -1.0 " stroke="#000000"
+                    stroke-width="0.21 px"
+                    style="stroke-width:0.21;stroke-miterlimit:4;
+                        stroke-dasharray:none;fill:none;
+                        fill-rule: evenodd "/>\n'''
+            )
         )
 
     def test_good_rectangle_face(self):
@@ -395,19 +422,32 @@ class GetSVGTest_getPath(unittest.TestCase):
                 support=None
             )
             self.assertEqual(
-                svg.getPath(
-                    plane=self.plane,
-                    fill="#CCCCCC",
-                    stroke="#000000",
-                    linewidth=0.21,
-                    lstyle="none",
-                    obj=rec,
-                    pathdata=[],
-                    edges=rec.Shape.Edges,
-                    wires=[],
-                    pathname=None
+                self.defuzzy(
+                    svg.getPath(
+                        plane=self.plane,
+                        fill="#CCCCCC",
+                        stroke="#000000",
+                        linewidth=0.21,
+                        lstyle="none",
+                        obj=rec,
+                        pathdata=[],
+                        edges=rec.Shape.Edges,
+                        wires=[],
+                        pathname=None
+                    )
                 ),
-                '''<path id="Rectangle"  d="M -1.5 -1.0 L -3.03846153846 2.69230769231 L -4.88461538462 1.92307692308 L -3.34615384615 -1.76923076923 L -1.5 -1.0 Z " stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:#CCCCCC;fill-rule: evenodd "/>\n'''
+                self.defuzzy(
+                    '''<path id="Rectangle"
+                        d="M -1.5 -1.0
+                            L -3.03846153846 2.69230769231
+                            L -4.88461538462 1.92307692308
+                            L -3.34615384615 -1.76923076923
+                            L -1.5 -1.0 Z "
+                        stroke="#000000" stroke-width="0.21 px"
+                        style="stroke-width:0.21;stroke-miterlimit:4;
+                            stroke-dasharray:none;fill:#CCCCCC;
+                            fill-rule: evenodd "/>\n'''
+                )
             )
 
     def test_good_circle(self):
@@ -416,40 +456,63 @@ class GetSVGTest_getPath(unittest.TestCase):
         placement.Base = FreeCAD.Vector(-1.5, -1.0, 0.0)
         circle = Draft.makeCircle(radius=3, placement=placement, face=None)
         self.assertEqual(
-            svg.getPath(
-                plane=self.plane,
-                fill="none",
-                stroke="#000000",
-                linewidth=0.21,
-                lstyle="none",
-                obj=circle,
-                pathdata=[],
-                edges=circle.Shape.Edges,
-                wires=[],
-                pathname=None
+            self.defuzzy(
+                svg.getPath(
+                    plane=self.plane,
+                    fill="none",
+                    stroke="#000000",
+                    linewidth=0.21,
+                    lstyle="none",
+                    obj=circle,
+                    pathdata=[],
+                    edges=circle.Shape.Edges,
+                    wires=[],
+                    pathname=None
+                )
             ),
-            '''<circle cx="-1.5" cy="-1.0" r="3.0" stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none"/>\n'''
+            self.defuzzy(
+                '''<circle cx="-1.5" cy="-1.0"
+                    r="3.0" stroke="#000000"
+                    stroke-width="0.21 px" style="stroke-width:0.21;
+                    stroke-miterlimit:4;stroke-dasharray:none;fill:none"/>\n'''
+            )
         )
 
     def test_good_ellipse(self):
         placement = FreeCAD.Placement()
         placement.Rotation.Q = (0.0, 0.0, 1.5, 1.0)
         placement.Base = FreeCAD.Vector(-1.5, -1.0, 0.0)
-        ellipse = Draft.makeEllipse(majradius=3, minradius=2, placement=placement, face=None)
+        ellipse = Draft.makeEllipse(
+            majradius=3,
+            minradius=2,
+            placement=placement,
+            face=None
+        )
         self.assertEqual(
-            svg.getPath(
-                plane=self.plane,
-                fill="none",
-                stroke="#000000",
-                linewidth=0.21,
-                lstyle="none",
-                obj=ellipse,
-                pathdata=[],
-                edges=ellipse.Shape.Edges,
-                wires=[],
-                pathname=None
+            self.defuzzy(
+                svg.getPath(
+                    plane=self.plane,
+                    fill="none",
+                    stroke="#000000",
+                    linewidth=0.21,
+                    lstyle="none",
+                    obj=ellipse,
+                    pathdata=[],
+                    edges=ellipse.Shape.Edges,
+                    wires=[],
+                    pathname=None
+                )
             ),
-            '''<path id="Ellipse"  d="M -2.65384615385 1.76923076923 A 3.0 2.0 -67.380135052 0 0 -0.346153846154 -3.76923076923 A 3.0 2.0 -67.380135052 0 0 -2.65384615385 1.76923076923 " stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+            self.defuzzy(
+                '''<path id="Ellipse"
+                    d="M -2.65384615385 1.76923076923
+                     A 3.0 2.0 -67.380135052 0 0 -0.346153846154 -3.76923076923
+                     A 3.0 2.0 -67.380135052 0 0 -2.65384615385 1.76923076923 "
+                    stroke="#000000" stroke-width="0.21 px"
+                    style="stroke-width:0.21;stroke-miterlimit:4;
+                        stroke-dasharray:none;fill:none;
+                        fill-rule: evenodd "/>\n'''
+            )
         )
 
 
@@ -460,19 +523,28 @@ class GetSVGTest_getPath(unittest.TestCase):
         ]
         bez = Draft.makeBezCurve(points, closed=False, support=None)
         self.assertEqual(
-            svg.getPath(
-                plane=self.plane,
-                fill="none",
-                stroke="#000000",
-                linewidth=0.21,
-                lstyle="none",
-                obj=bez,
-                pathdata=[],
-                edges=bez.Shape.Edges,
-                wires=[],
-                pathname=None
+            self.defuzzy(
+                svg.getPath(
+                    plane=self.plane,
+                    fill="none",
+                    stroke="#000000",
+                    linewidth=0.21,
+                    lstyle="none",
+                    obj=bez,
+                    pathdata=[],
+                    edges=bez.Shape.Edges,
+                    wires=[],
+                    pathname=None
+                )
             ),
-            '''<path id="Line"  d="M -1.0 1.0 L -3.0 5.0 " stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+            self.defuzzy(
+                '''<path id="Line"
+                    d="M -1.0 1.0 L -3.0 5.0 "
+                    stroke="#000000" stroke-width="0.21 px"
+                    style="stroke-width:0.21;stroke-miterlimit:4;
+                        stroke-dasharray:none;fill:none;
+                        fill-rule: evenodd "/>\n'''
+            )
         )
 
     def test_good_bez2(self):
@@ -483,19 +555,27 @@ class GetSVGTest_getPath(unittest.TestCase):
         ]
         bez = Draft.makeBezCurve(points, closed=False, support=None)
         self.assertEqual(
-            svg.getPath(
-                plane=self.plane,
-                fill="none",
-                stroke="#000000",
-                linewidth=0.21,
-                lstyle="none",
-                obj=bez,
-                pathdata=[],
-                edges=bez.Shape.Edges,
-                wires=[],
-                pathname=None
+            self.defuzzy(
+                svg.getPath(
+                    plane=self.plane,
+                    fill="none",
+                    stroke="#000000",
+                    linewidth=0.21,
+                    lstyle="none",
+                    obj=bez,
+                    pathdata=[],
+                    edges=bez.Shape.Edges,
+                    wires=[],
+                    pathname=None
+                )
             ),
-            '''<path id="BezCurve"  d="M -1.0 1.0 Q -3.0 5.0 5.0 2.0 " stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+            self.defuzzy(
+                '''<path id="BezCurve"
+                    d="M -1.0 1.0 Q -3.0 5.0 5.0 2.0 "
+                    stroke="#000000" stroke-width="0.21 px"
+                    style="stroke-width:0.21;stroke-miterlimit:4;
+                    stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+            )
         )
 
     def test_good_bez3(self):
@@ -507,19 +587,28 @@ class GetSVGTest_getPath(unittest.TestCase):
         ]
         bez = Draft.makeBezCurve(points, closed=False, support=None)
         self.assertEqual(
-            svg.getPath(
-                plane=self.plane,
-                fill="none",
-                stroke="#000000",
-                linewidth=0.21,
-                lstyle="none",
-                obj=bez,
-                pathdata=[],
-                edges=bez.Shape.Edges,
-                wires=[],
-                pathname=None
+            self.defuzzy(
+                svg.getPath(
+                    plane=self.plane,
+                    fill="none",
+                    stroke="#000000",
+                    linewidth=0.21,
+                    lstyle="none",
+                    obj=bez,
+                    pathdata=[],
+                    edges=bez.Shape.Edges,
+                    wires=[],
+                    pathname=None
+                )
             ),
-            '''<path id="BezCurve"  d="M -1.0 1.0 C -3.0 5.0 5.0 2.0 -0.0 -0.0 " stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+            self.defuzzy(
+                '''<path id="BezCurve"
+                    d="M -1.0 1.0 C -3.0 5.0 5.0 2.0 -0.0 -0.0 "
+                    stroke="#000000" stroke-width="0.21 px"
+                    style="stroke-width:0.21;stroke-miterlimit:4;
+                        stroke-dasharray:none;fill:none;
+                        fill-rule: evenodd "/>\n'''
+            )
         )
 
     def test_good_bspline(self):
@@ -531,22 +620,33 @@ class GetSVGTest_getPath(unittest.TestCase):
         ]
         spline = Draft.makeBSpline(points, closed=False, support=None)
         self.assertEqual(
-            svg.getPath(
-                plane=self.plane,
-                fill="none",
-                stroke="#000000",
-                linewidth=0.21,
-                lstyle="none",
-                obj=spline,
-                pathdata=[],
-                edges=spline.Shape.Edges,
-                wires=[],
-                pathname=None
+            self.defuzzy(
+                svg.getPath(
+                    plane=self.plane,
+                    fill="none",
+                    stroke="#000000",
+                    linewidth=0.21,
+                    lstyle="none",
+                    obj=spline,
+                    pathdata=[],
+                    edges=spline.Shape.Edges,
+                    wires=[],
+                    pathname=None
+                )
             ),
-            '''<path id="BSpline"  d="M -1.0 1.0 C -3.50786585035 3.41567830625 -3.78539976065 4.59632533295 -3.0 5.0 C -1.49949586414 5.77121936852 3.8807161707 3.70648962432 5.0 2.0 C 5.70546877862 0.924423707838 4.71824005093 -0.00883801614885 -0.0 -0.0 " stroke="#000000" stroke-width="0.21 px" style="stroke-width:0.21;stroke-miterlimit:4;stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+            self.defuzzy(
+                '''<path id="BSpline"
+                    d="M -1.0 1.0 C -3.50786585035 3.41567830625
+                        -3.78539976065 4.59632533295 -3.0 5.0
+                        C -1.49949586414 5.77121936852 3.8807161707
+                        3.70648962432 5.0 2.0 C 5.70546877862
+                        0.924423707838 4.71824005093 -0.00883801614885
+                        -0.0 -0.0 " stroke="#000000"
+                    stroke-width="0.21 px"
+                    style="stroke-width:0.21;stroke-miterlimit:4;
+                    stroke-dasharray:none;fill:none;fill-rule: evenodd "/>\n'''
+                )
         )
-
-
 
 
 class DraftTest(unittest.TestCase):
