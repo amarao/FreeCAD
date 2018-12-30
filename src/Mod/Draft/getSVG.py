@@ -290,34 +290,53 @@ def get_occ_projection(edge, drawing_plane_normal):
                 pass
 
 
+def to_spline(edge):
+    bspline = edge.Curve.toBSpline(edge.FirstParameter, edge.LastParameter)
+    if bspline.Degree > 3 or bspline.isRational():
+        try:
+            bspline = bspline.approximateBSpline(0.05, 50, 3, 'C0')
+        except RuntimeError:
+            print("Debug: unable to approximate bspline")
+    return bspline
+
+
+def project_beizer(bezier, plane):
+    for pole in bezier.getPoles()[1:]:
+        yield getProj(pole, plane)
+
+
+def disretize_bspline(bspline, plane):
+    with path(snippet=True) as p:
+        for linepoint in bspline.discretize(0.1)[1:]:
+            v = getProj(linepoint, plane)
+            p.lineto(v)
+    return p
+
+
+def bspline_to_beizer(bspline, plane):
+    with path(snippet=True) as p:
+        for bezierseg in bspline.toBezier():
+            proj_poles = list(project_beizer(bezierseg, plane))
+            if bezierseg.Degree == 1:
+                p.lineto(proj_poles[0])
+            elif bezierseg.Degree == 2:
+                p.quadratic_bezier_curveto(*proj_poles[:2])
+            elif bezierseg.Degree == 3:
+                p.curveto(*proj_poles[:3])
+            else:  # should not happen
+                raise AssertionError("Wrong degree for bezier")
+    return p
+
+
 def render_curve(edge, plane):
     with path(snippet=True) as p:
-        bspline = edge.Curve.toBSpline(edge.FirstParameter, edge.LastParameter)
-        if bspline.Degree > 3 or bspline.isRational():
-            try:
-                bspline = bspline.approximateBSpline(0.05, 50, 3, 'C0')
-            except RuntimeError:
-                print("Debug: unable to approximate bspline")
+        bspline = to_spline(edge)
         if bspline.Degree <= 3 and not bspline.isRational():
-            for bezierseg in bspline.toBezier():
-                proj_poles = [
-                    getProj(pole, plane)
-                    for pole in bezierseg.getPoles()[1:]
-                ]
-                if bezierseg.Degree == 1:
-                    p.lineto(proj_poles[0])
-                elif bezierseg.Degree == 2:
-                    p.quadratic_bezier_curveto(*proj_poles[:2])
-                elif bezierseg.Degree == 3:
-                    p.curveto(*proj_poles[:3])
-                else:  # should not happen
-                    raise AssertionError("Wrong degree for bezier")
+            p.append_data(bspline_to_beizer(bspline, plane))
         else:
-            print("Debug: one edge (hash ", e.hashCode(),
+            print("Debug: one edge (hash ", edge.hashCode(),
                   ") has been discretized with parameter 0.1")
-            for linepoint in bspline.discretize(0.1)[1:]:
-                v = getProj(linepoint, plane)
-                p.lineto(v)
+            p.append_data(disretize_bspline(bspline, plane))
     return p
 
 
