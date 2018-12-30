@@ -17,10 +17,10 @@ class path:
         supported.
 
         If lineto is called first (instead of moveto),
-        it converts to 'moveto',
+        it converts to 'moveto'. This can be disabled by snippet=True
     '''
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, snippet=False):
         self.name = name
         self.stroke = 'none'
         self.stroke_width = '1 px'
@@ -30,12 +30,13 @@ class path:
         self.fill_opacity = None
         self.fill_rule = 'evenodd'
         self.data = []  # list of tuples (type, value)
+        self.snippet = snippet
 
     def __enter__(self):
         return self
 
     def lineto(self, point):
-        if not self.data:
+        if not self.data and not self.snippet:
             self.moveto(point)
         else:
             self.data.append(('L', (point.x, point.y)))
@@ -83,8 +84,7 @@ class path:
         self.data += another_path.data
 
     def __exit__(self, type, value, traceback):
-        if self.data and self.data[0][0] != 'M':
-            raise ValueError("path should start with 'moveto'")
+        pass
 
     def d_sequence(self):
         for (mark, point) in self.data:
@@ -94,6 +94,8 @@ class path:
 
     @property
     def d(self):
+        if self.data and self.data[0][0] != 'M':
+            raise ValueError("path should start with 'moveto'")
         main_sequence = list(self.d_sequence())
         if self.fill != 'none':
             main_sequence.append('Z')
@@ -288,6 +290,37 @@ def get_occ_projection(edge, drawing_plane_normal):
                 pass
 
 
+def render_curve(edge, plane):
+    with path(snippet=True) as p:
+        bspline = edge.Curve.toBSpline(edge.FirstParameter, edge.LastParameter)
+        if bspline.Degree > 3 or bspline.isRational():
+            try:
+                bspline = bspline.approximateBSpline(0.05, 50, 3, 'C0')
+            except RuntimeError:
+                print("Debug: unable to approximate bspline")
+        if bspline.Degree <= 3 and not bspline.isRational():
+            for bezierseg in bspline.toBezier():
+                proj_poles = [
+                    getProj(pole, plane)
+                    for pole in bezierseg.getPoles()[1:]
+                ]
+                if bezierseg.Degree == 1:
+                    p.lineto(proj_poles[0])
+                elif bezierseg.Degree == 2:
+                    p.quadratic_bezier_curveto(*proj_poles[:2])
+                elif bezierseg.Degree == 3:
+                    p.curveto(*proj_poles[:3])
+                else:  # should not happen
+                    raise AssertionError("Wrong degree for bezier")
+        else:
+            print("Debug: one edge (hash ", e.hashCode(),
+                  ") has been discretized with parameter 0.1")
+            for linepoint in bspline.discretize(0.1)[1:]:
+                v = getProj(linepoint, plane)
+                p.lineto(v)
+    return p
+
+
 def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[],
             wires=[], pathname=None
             ):
@@ -380,32 +413,7 @@ def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[],
                 elif DraftGeomUtils.geomType(e) == "Line":
                     p.lineto(getProj(vs[-1].Point, plane))
                 else:
-                    bspline=e.Curve.toBSpline(e.FirstParameter,e.LastParameter)
-                    if bspline.Degree > 3 or bspline.isRational():
-                        try:
-                            bspline=bspline.approximateBSpline(0.05,50, 3,'C0')
-                        except RuntimeError:
-                            print("Debug: unable to approximate bspline")
-                    if bspline.Degree <= 3 and not bspline.isRational():
-                        for bezierseg in bspline.toBezier():
-                            proj_poles = [
-                                getProj(pole, plane)
-                                for pole in bezierseg.getPoles()[1:]
-                            ]
-                            if bezierseg.Degree == 1:
-                                p.lineto(proj_poles[0])
-                            elif bezierseg.Degree == 2:
-                                p.quadratic_bezier_curveto(*proj_poles[:2])
-                            elif bezierseg.Degree == 3:
-                                p.curveto(*proj_poles[:3])
-                            else:  # should not happen
-                                raise AssertionError("Wrong degree for bezier")
-                    else:
-                        print("Debug: one edge (hash ", e.hashCode(),
-                              ") has been discretized with parameter 0.1")
-                        for linepoint in bspline.discretize(0.1)[1:]:
-                            v = getProj(linepoint, plane)
-                            p.lineto(v)
+                    p.append_data(render_curve(e, plane))
         if p.d in pathdata:
             # do not draw a path on another identical path
             return ""
