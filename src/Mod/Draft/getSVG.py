@@ -293,8 +293,21 @@ def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[],
             ):
     # I REALLY NEED to fix pathdata here. Passing a list to be modified in func
     # is terrible
+
+    try:
+        fill_opacity = str(fill_opacity)
+    except NameError:
+        fill_opacity = None
+
     with path(name=pathname or obj.Name) as p:
-        for egroupindex, edges in enumerate(group_edges(edges, wires)):
+        p.set_attributes(
+            stroke=stroke,
+            linewidth=linewidth,
+            lstyle=lstyle,
+            fill=fill,
+            fill_opacity=fill_opacity
+        )
+        for edges in group_edges(edges, wires):
             vs = ()  # skipped for the first edge
             for edgeindex, e in enumerate(edges):
                 previousvs = vs
@@ -398,17 +411,6 @@ def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[],
             return ""
         else:
             pathdata.append(p.d)
-        try:
-            fill_opacity = str(fill_opacity)
-        except NameError:
-            fill_opacity = None
-        p.set_attributes(
-            stroke=stroke,
-            linewidth=linewidth,
-            lstyle=lstyle,
-            fill=fill,
-            fill_opacity=fill_opacity
-        )
     return p.to_string()
 
 
