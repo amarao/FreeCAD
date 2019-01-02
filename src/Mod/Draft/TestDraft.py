@@ -162,6 +162,7 @@ class GetSVGTest_getDraftParam(unittest.TestCase):
             svg.getDraftParam('foobar', "foobar")
 
 
+
 class GetSVGTest_process_custom_linestyle(unittest.TestCase):
 
     def test_good_no_scale(self):
@@ -449,6 +450,52 @@ class GetSVGTest_get_drawing_plane_normal(unittest.TestCase):
         )
 
 
+class GetSVGTest_group_edges(unittest.TestCase):
+
+    doc_name = "GetSVGTest_group_edges"
+
+    def setUp(self):
+        # setting a new document to hold the tests
+        if FreeCAD.ActiveDocument:
+            if FreeCAD.ActiveDocument.Name != self.doc_name:
+                FreeCAD.newDocument(self.doc_name)
+        else:
+            FreeCAD.newDocument(self.doc_name)
+        FreeCAD.setActiveDocument(self.doc_name)
+        self.plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 0, 0),
+            svg.Vector(0, 1, 0),
+            svg.Vector(0, 0, 1)
+        )
+        self.wire1 = Draft.makeWire([
+            FreeCAD.Vector(0, 0, 0),
+            FreeCAD.Vector(100, 100, 100)
+        ])
+        self.wire2 = Draft.makeWire([
+            FreeCAD.Vector(200, 200, 200),
+            FreeCAD.Vector(0, 0, 0)
+        ])
+
+    def tearDown(self):
+        FreeCAD.closeDocument(self.doc_name)
+
+    def test_good_empty(self):
+        self.assertEqual(svg.group_edges([], []), [])
+
+    def test_good_edges_only(self):
+        edges = self.wire1.Shape.Edges + self.wire2.Shape.Edges
+        sorted_edges = svg.group_edges(edges=edges, wires=[]),
+        self.assertEqual(
+            sorted_edges[0][0][0].Matrix,
+            edges[1].Matrix
+        )
+
+    def no_test_good_wires_only(self):
+        pass  # sorry, too hard for me
+
+    def test_bad_wires_and_edges(self):
+        with self.assertRaises(ValueError):
+            svg.group_edges(['one'], ['two'])
 
 
 class GetSVGTest_getPath(unittest.TestCase):

@@ -252,6 +252,8 @@ def group_edges(edges, wires):
         egroups = Part.sortEdges(edges)
     else:
         egroups = []
+        if edges:
+            raise ValueError("Can't work with both edges and wires")
         for wire in wires:
             wire_copy = wire.copy()
             wire_copy.fixWire()
