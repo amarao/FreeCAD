@@ -141,13 +141,18 @@ class GetSVGTest_path(unittest.TestCase):
 class GetSVGTest_getDraftParam(unittest.TestCase):
 
     def test_good_svgDashedLine(self):
-        self.assertEqual(svg.getDraftParam('svgDashedLine', '1'), '1')
+        self.assertEqual(
+            svg.getDraftParam('svgDashedLine', '0.09,0.05'), '0.09,0.05')
 
     def test_good_svgDottedLine(self):
-        self.assertEqual(svg.getDraftParam('svgDottedLine', '1'), '1')
+        self.assertEqual(
+            svg.getDraftParam('svgDottedLine', '0.02,0.02'), '0.02,0.02')
 
     def test_good_svgDashdotLine(self):
-        self.assertEqual(svg.getDraftParam('svgDashdotLine', '1'), '1')
+        self.assertEqual(
+            svg.getDraftParam('svgDashdotLine', '0.09,0.05,0.02,0.05'),
+            '0.09,0.05,0.02,0.05'
+        )
 
     def test_good_svgDiscretization(self):
         self.assertEqual(svg.getDraftParam('svgDiscretization', 1.0), 1.0)
