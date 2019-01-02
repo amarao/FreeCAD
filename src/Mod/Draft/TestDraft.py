@@ -73,6 +73,39 @@ class GetSVGTest_path(unittest.TestCase):
             path.vertical_lineto(-1)
         self.assertEqual(path.d, "M 0.0 0.0 V 3.0 M 0.0 -10.0 V -1.0 V -1.0")
 
+    def test_good_elliptical_arc(self):
+        with svg.path() as path:
+            path.moveto(svg.Vector(0, 0, 0))
+            path.elliptical_arc(
+                rx=1,
+                ry=1,
+                x_axis_rotation=0.5,
+                large_arc_flag=1,
+                sweep_flag=1,
+                point=FreeCAD.Vector(2, 2, 2)
+            )
+
+        self.assertEqual(path.d, "M 0.0 0.0 A 1.0 1.0 0.5 1 1 2.0 2.0")
+
+    def test_good_curveto(self):
+        with svg.path() as path:
+            path.moveto(svg.Vector(0, 0, 0))
+            path.curveto(
+                start=FreeCAD.Vector(1, 1, 0),
+                end=FreeCAD.Vector(0, 2,  0),
+                to=FreeCAD.Vector(2, 1, 0)
+            )
+        self.assertEqual(path.d, "M 0.0 0.0 C 1.0 1.0 0.0 2.0 2.0 1.0")
+
+    def test_quadratic_bezier_curveto(self):
+        with svg.path() as path:
+            path.moveto(svg.Vector(0, 0, 0))
+            path.quadratic_bezier_curveto(
+                start=FreeCAD.Vector(1, 1, 0),
+                to=FreeCAD.Vector(2, 1, 0)
+            )
+        self.assertEqual(path.d, "M 0.0 0.0 Q 1.0 1.0 2.0 1.0")
+
     def test_good_append_data(self):
         with svg.path() as path1:
             path1.moveto(svg.Vector(0, 0, 0))
