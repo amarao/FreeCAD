@@ -54,13 +54,13 @@ class path:
         self.data.append(('C', (start.x, start.y, end.x, end.y, to.x, to.y)))
 
     def smooth_curveto(self, point):
-        pass
+        raise NotImplemented
 
     def quadratic_bezier_curveto(self, start, to):
         self.data.append(('Q', (start.x, start.y, to.x, to.y)))
 
     def smooth_quadratic_bezier_curveto(self, point):
-        pass
+        raise NotImplemented
 
     def elliptical_arc(self, rx, ry, x_axis_rotation, large_arc_flag,
                        sweep_flag, point):
@@ -252,6 +252,8 @@ def group_edges(edges, wires):
         egroups = Part.sortEdges(edges)
     else:
         egroups = []
+        if edges:
+            raise ValueError("Can't work with both edges and wires")
         for wire in wires:
             wire_copy = wire.copy()
             wire_copy.fixWire()

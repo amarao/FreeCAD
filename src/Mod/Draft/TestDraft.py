@@ -73,6 +73,39 @@ class GetSVGTest_path(unittest.TestCase):
             path.vertical_lineto(-1)
         self.assertEqual(path.d, "M 0.0 0.0 V 3.0 M 0.0 -10.0 V -1.0 V -1.0")
 
+    def test_good_elliptical_arc(self):
+        with svg.path() as path:
+            path.moveto(svg.Vector(0, 0, 0))
+            path.elliptical_arc(
+                rx=1,
+                ry=1,
+                x_axis_rotation=0.5,
+                large_arc_flag=1,
+                sweep_flag=1,
+                point=FreeCAD.Vector(2, 2, 2)
+            )
+
+        self.assertEqual(path.d, "M 0.0 0.0 A 1.0 1.0 0.5 1 1 2.0 2.0")
+
+    def test_good_curveto(self):
+        with svg.path() as path:
+            path.moveto(svg.Vector(0, 0, 0))
+            path.curveto(
+                start=FreeCAD.Vector(1, 1, 0),
+                end=FreeCAD.Vector(0, 2,  0),
+                to=FreeCAD.Vector(2, 1, 0)
+            )
+        self.assertEqual(path.d, "M 0.0 0.0 C 1.0 1.0 0.0 2.0 2.0 1.0")
+
+    def test_quadratic_bezier_curveto(self):
+        with svg.path() as path:
+            path.moveto(svg.Vector(0, 0, 0))
+            path.quadratic_bezier_curveto(
+                start=FreeCAD.Vector(1, 1, 0),
+                to=FreeCAD.Vector(2, 1, 0)
+            )
+        self.assertEqual(path.d, "M 0.0 0.0 Q 1.0 1.0 2.0 1.0")
+
     def test_good_append_data(self):
         with svg.path() as path1:
             path1.moveto(svg.Vector(0, 0, 0))
@@ -108,13 +141,18 @@ class GetSVGTest_path(unittest.TestCase):
 class GetSVGTest_getDraftParam(unittest.TestCase):
 
     def test_good_svgDashedLine(self):
-        self.assertEqual(svg.getDraftParam('svgDashedLine', '1'), '1')
+        self.assertEqual(
+            svg.getDraftParam('svgDashedLine', '0.09,0.05'), '0.09,0.05')
 
     def test_good_svgDottedLine(self):
-        self.assertEqual(svg.getDraftParam('svgDottedLine', '1'), '1')
+        self.assertEqual(
+            svg.getDraftParam('svgDottedLine', '0.02,0.02'), '0.02,0.02')
 
     def test_good_svgDashdotLine(self):
-        self.assertEqual(svg.getDraftParam('svgDashdotLine', '1'), '1')
+        self.assertEqual(
+            svg.getDraftParam('svgDashdotLine', '0.09,0.05,0.02,0.05'),
+            '0.09,0.05,0.02,0.05'
+        )
 
     def test_good_svgDiscretization(self):
         self.assertEqual(svg.getDraftParam('svgDiscretization', 1.0), 1.0)
@@ -122,6 +160,7 @@ class GetSVGTest_getDraftParam(unittest.TestCase):
     def test_sad_exception(self):
         with self.assertRaises(ValueError):
             svg.getDraftParam('foobar', "foobar")
+
 
 
 class GetSVGTest_process_custom_linestyle(unittest.TestCase):
@@ -412,6 +451,7 @@ class GetSVGTest_get_drawing_plane_normal(unittest.TestCase):
 
 
 class GetSVGTest_group_edges(unittest.TestCase):
+
     doc_name = "GetSVGTest_group_edges"
 
     def setUp(self):
