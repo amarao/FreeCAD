@@ -340,16 +340,63 @@ def render_curve(edge, plane):
     return p
 
 
-def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[],
-            wires=[], pathname=None
-            ):
-    # I REALLY NEED to fix pathdata here. Passing a list to be modified in func
-    # is terrible
+def prepare_ellipse(curve):
+    rx = curve.MajorRadius
+    ry = curve.MinorRadius
+    rot = math.degrees(curve.AngleXU *
+                       (curve.Axis * FreeCAD.Vector(0, 0, 1)))
+    if rot > 90:
+        rot -= 180
+    if rot < -90:
+        rot += 180
+    return (rx, ry, rot)
 
-    try:
-        fill_opacity = str(fill_opacity)
-    except NameError:
-        fill_opacity = None
+
+def process_ellipse_or_arc(edge, endpoints, drawing_plane_normal, rx, ry, rot):
+    with path(snippet=True) as p:
+        flag_large_arc = (((edge.ParameterRange[1] -
+                            edge.ParameterRange[0]) / math.pi) % 2) > 1
+        # flag_sweep = (c.Axis * drawing_plane_normal >= 0) \
+        #          == (e.LastParameter > e.FirstParameter)
+        #         == (e.Orientation == "Forward")
+        #  other method: check the direction of the angle between tangents
+        t1 = edge.tangentAt(edge.FirstParameter)
+        t2 = edge.tangentAt(edge.FirstParameter +
+                            (edge.LastParameter-edge.FirstParameter)/10)
+        flag_sweep = (DraftVecUtils.angle(t1, t2, drawing_plane_normal) < 0)
+        for v in endpoints:
+            p.elliptical_arc(
+                rx=rx,
+                ry=ry,
+                x_axis_rotation=rot,
+                large_arc_flag=flag_large_arc,
+                sweep_flag=flag_sweep,
+                point=v
+            )
+        return p
+
+
+def prepare_ellipse_or_cirle_endpoints(vertice, edge, curve, isellipse, plane):
+    if len(edge.Vertexes) == 1 and isellipse:
+        endpoints = (
+            getProj(
+                curve.value((curve.LastParameter - curve.FirstParameter)/2.0),
+                plane
+            ),
+            getProj(vertice.Point, plane)
+        )
+    else:
+        endpoints = (getProj(vertice.Point), plane)
+    return endpoints
+
+
+def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[],
+            wires=[], fill_opacity=None, pathname=None
+            ):
+    # I REALLY NEED to fix pathdata here. Passing a list to be modified
+    # in funcion is terrible
+
+    fill_opacity = try_get_opacity(fill_opacity)
 
     with path(name=pathname or obj.Name) as p:
         p.set_attributes(
@@ -384,49 +431,32 @@ def getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, edges=[],
                         if a_string:
                             p.add_raw_data('A', a_string)
                         else:
-                            if len(e.Vertexes) == 1 and iscircle: #complete curve
-                                svg = getCircle(e, plane, fill, stroke, linewidth, lstyle)
+                            if len(e.Vertexes) == 1 and iscircle:
+                                # complete curve
+                                svg = getCircle(e, plane, fill,
+                                                stroke, linewidth, lstyle)
                                 return svg
-                            elif len(e.Vertexes) == 1 and isellipse:
-                                #svg = getEllipse(e)
-                                #return svg
-                                endpoints = (getProj(c.value((c.LastParameter-\
-                                        c.FirstParameter)/2.0), plane), \
-                                        getProj(vs[-1].Point, plane))
                             else:
-                                endpoints = (getProj(vs[-1].Point), plane)
+                                endpoints = prepare_ellipse_or_cirle_endpoints(
+                                    vertice=vs[-1],
+                                    edge=e,
+                                    curve=c,
+                                    isellipse=isellipse,
+                                    plane=plane
+                                )
                             # arc
                             if iscircle:
                                 rx = ry = c.Radius
                                 rot = 0
-                            else: #ellipse
-                                rx = c.MajorRadius
-                                ry = c.MinorRadius
-                                rot = math.degrees(c.AngleXU * (c.Axis * \
-                                    FreeCAD.Vector(0,0,1)))
-                                if rot > 90:
-                                    rot -=180
-                                if rot < -90:
-                                    rot += 180
-                                #be careful with the sweep flag
-                            flag_large_arc = (((e.ParameterRange[1] - \
-                                    e.ParameterRange[0]) / math.pi) % 2) > 1
-                            #flag_sweep = (c.Axis * drawing_plane_normal >= 0) \
-                            #         == (e.LastParameter > e.FirstParameter)
-                            #        == (e.Orientation == "Forward")
-                            # other method: check the direction of the angle between tangents
-                            t1 = e.tangentAt(e.FirstParameter)
-                            t2 = e.tangentAt(e.FirstParameter + (e.LastParameter-e.FirstParameter)/10)
-                            flag_sweep = (DraftVecUtils.angle(t1,t2,drawing_plane_normal) < 0)
-                            for v in endpoints:
-                                p.elliptical_arc(
-                                    rx=rx,
-                                    ry=ry,
-                                    x_axis_rotation=rot,
-                                    large_arc_flag=flag_large_arc,
-                                    sweep_flag=flag_sweep,
-                                    point=v
-                                )
+                            else:  # ellipse
+                                rx, ry, rot = prepare_ellipse(c)
+                                # be careful with the sweep flag
+                            p.append_data(process_ellipse_or_arc(
+                                e,
+                                endpoints,
+                                drawing_plane_normal,
+                                rx, ry, rot
+                            ))
                     else:
                         p.append_data(get_discretized(e, plane))
                 elif DraftGeomUtils.geomType(e) == "Line":
@@ -651,7 +681,7 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
         else:
             fill = 'url(#'+fillstyle+')'
         lstyle = getLineStyle(linestyle, scale)
-        svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, obj.Edges,pathname="")
+        svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, obj.Edges, fill_opacity, pathname="")
 
 
     elif getType(obj) == "Dimension":
@@ -750,13 +780,13 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
                     fill= "none"
                     lstyle = getLineStyle(linestyle, scale)
                     if obj.ViewObject.DisplayMode == "2D":
-                        svg += getPath([prx.circle])
+                        svg += getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, [prx.circle], fill_opacity)
                     else:
                         if hasattr(prx,"circle1"):
-                            svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata,[prx.circle1])
-                            svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata,[prx.circle2])
+                            svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, [prx.circle1], fill_opacity)
+                            svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, [prx.circle2], fill_opaticy)
                         else:
-                            svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, [prx.circle])
+                            svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, [prx.circle], fill_opacity)
 
                     # drawing arrows
                     if hasattr(obj.ViewObject,"ArrowType"):
@@ -868,7 +898,7 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
                 n = 0
                 for e in obj.Shape.Edges:
                     lstyle = lorig
-                    svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, [e])
+                    svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, [e], fill_opacity)
                     lstyle = "none"
                     pos = ["Start"]
                     if hasattr(vobj,"BubblePosition"):
@@ -904,7 +934,7 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
         fill = stroke
         lstyle = getLineStyle(linestyle, scale)
         if obj.Base and obj.Diameter:
-            svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, obj.Base.Shape.Edges)
+            svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, obj.Base.Shape.Edges, fill_opacity)
         for f in obj.Shape.Faces:
             if len(f.Edges) == 1:
                 if isinstance(f.Edges[0].Curve,Part.Circle):
@@ -917,7 +947,7 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
             if not hasattr(obj.Proxy,"wires"):
                 obj.Proxy.execute(obj)
             if hasattr(obj.Proxy,"wires"):
-                svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, wires=obj.Proxy.wires)
+                svg += getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, wires=obj.Proxy.wires, fill_opacity=fill_opacity)
 
     elif getType(obj) == "PipeConnector":
         pass
@@ -977,7 +1007,7 @@ def getSVG(obj,scale=1,linewidth=0.35,fontsize=12,fillstyle="shape color",direct
             wiredEdges = []
             if obj.Shape.Faces:
                 for i,f in enumerate(obj.Shape.Faces):
-                    svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, wires=f.Wires,pathname='%s_f%04d' % \
+                    svg +=   getPath(plane, fill, stroke, linewidth, lstyle, obj, pathdata, wires=f.Wires,fill_opacity=fill_opacity, pathname='%s_f%04d' % \
                             (obj.Name,i))
                     wiredEdges.extend(f.Edges)
             else:

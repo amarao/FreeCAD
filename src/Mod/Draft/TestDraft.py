@@ -411,7 +411,79 @@ class GetSVGTest_get_drawing_plane_normal(unittest.TestCase):
         )
 
 
+class GetSVGTest_group_edges(unittest.TestCase):
+    doc_name = "GetSVGTest_group_edges"
 
+    def setUp(self):
+        # setting a new document to hold the tests
+        if FreeCAD.ActiveDocument:
+            if FreeCAD.ActiveDocument.Name != self.doc_name:
+                FreeCAD.newDocument(self.doc_name)
+        else:
+            FreeCAD.newDocument(self.doc_name)
+        FreeCAD.setActiveDocument(self.doc_name)
+        self.plane = svg.WorkingPlane.plane(
+            svg.Vector(1, 0, 0),
+            svg.Vector(0, 1, 0),
+            svg.Vector(0, 0, 1)
+        )
+        self.placement = FreeCAD.Placement()
+        # self.placement.Rotation.Q = (0.0, 0.0, 1.0, 1.0)
+        # self.placement.Base = FreeCAD.Vector(1.0, 1.0, 0.0)
+
+    def tearDown(self):
+        FreeCAD.closeDocument(self.doc_name)
+
+    def test_good_empy(self):
+        self.assertEqual(svg.group_edges([], []), [])
+
+    def test_good_simple_rec(self):
+        self.placement.Base = FreeCAD.Vector(1.0, 1.0, 0.0)
+        rec = Draft.makeRectangle(
+            length=4,
+            height=2,
+            placement=self.placement,
+            face=True,
+            support=None
+        )
+        grouped = svg.group_edges(rec.Shape.Edges, [])
+        for g in grouped:
+            for e in g:
+                print(e.Matrix)
+        self.assertEqual(len(grouped), 1)
+        for edge, sorted_edge in zip(rec.Shape.Edges, grouped[0]):
+            self.assertEqual(edge.Matrix, sorted_edge.Matrix)
+
+    def test_good_simple_recover_order(self):
+        self.placement.Base = FreeCAD.Vector(1.0, 1.0, 0.0)
+        rec1 = Draft.makeRectangle(
+            length=4,
+            height=2,
+            placement=self.placement,
+            face=True,
+            support=None
+        )
+        self.placement.Base = FreeCAD.Vector(10.0, 10.0, 0.0)
+        rec2 = Draft.makeRectangle(
+            length=3,
+            height=5,
+            placement=self.placement,
+            face=True,
+            support=None
+        )
+        import random
+        input = list(rec1.Shape.Edges) + list(rec2.Shape.Edges)
+        random.shuffle(input)
+        grouped = svg.group_edges(input, [])
+        self.assertEqual(len(grouped), 2)
+        for edge, sorted_edge in zip(rec1.Shape.Edges, grouped[1]):
+            self.assertEqual(edge.Matrix, sorted_edge.Matrix)
+        for edge, sorted_edge in zip(rec2.Shape.Edges, grouped[0]):
+            self.assertEqual(edge.Matrix, sorted_edge.Matrix)
+
+
+    def test_good_wires():
+        
 
 class GetSVGTest_getPath(unittest.TestCase):
 
